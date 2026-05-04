@@ -1,0 +1,38 @@
+{
+  "name": "Weather Operations Dashboard",
+  "short_name": "Weather",
+  "description": "Real-time NWS-grade weather operations dashboard — radar, alerts, MRMS, ProbSevere.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#060b14",
+  "theme_color": "#0b1424",
+  "categories": ["weather", "utilities", "news"],
+  "icons": [
+    {
+      "src": "/icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Radar",
+      "url": "/?view=radar",
+      "description": "Radar map with MRMS + NEXRAD"
+    },
+    {
+      "name": "Alerts",
+      "url": "/?view=alerts",
+      "description": "Active NWS alerts"
+    }
+  ]
+}

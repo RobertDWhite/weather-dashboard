@@ -1,0 +1,25 @@
+# Example NGINX ingress. Edit host, ingressClassName, and TLS to match your
+# cluster. Delete this file if you front the UI with something else.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: weather
+  namespace: weather
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "8m"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: weather.example.org
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: weather-ui
+                port:
+                  number: 80
+  # tls:
+  #   - hosts: [weather.example.org]
+  #     secretName: weather-tls

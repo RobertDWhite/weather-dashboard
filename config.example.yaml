@@ -1,0 +1,64 @@
+# weather-dashboard configuration.
+# Copy to config.yaml and edit. All keys are optional — sensible defaults
+# make the dashboard usable with no configuration at all (centered on the
+# US, no API keys, no webhook delivery).
+
+# Observer location — drives forecast lookups and initial map center.
+observer:
+  lat: 39.5
+  lon: -84.5
+  location: "Dayton, OH"
+  state: "OH"
+
+# NOAA asks for an identifying User-Agent on api.weather.gov requests.
+# Format: "(AppName/version, contact@email)"
+nws_user_agent: "(weather-dashboard, contact@example.org)"
+
+# Branding / metadata used in the CAP feed and web push payloads.
+public_url: ""
+sender_email: "noreply@example.org"
+
+# Optional API keys. Each provider has a free tier — link in README.
+api_keys:
+  airnow: ""              # AQI panel
+  openweathermap: ""      # extended forecast (optional)
+  windy: ""               # Windy webcam tab
+  ohgo: ""                # Ohio DOT cameras (regional, fine to leave blank)
+  youtube: ""             # YouTube live cameras tab
+
+# Outbound webhook delivery for severe weather alerts.
+# Multiple targets may be defined; each fires independently.
+#
+# kind:         slack | discord | generic
+#               - slack: posts {text: "..."} (works for Mattermost too)
+#               - discord: posts {embeds: [...]} with severity coloring
+#               - generic: posts the full structured alert as JSON
+# min_severity: minor | moderate | severe | extreme
+# events:       case-insensitive substring filter; empty = all events
+webhooks: []
+# Example:
+# webhooks:
+#   - name: "ops-channel"
+#     kind: "slack"
+#     url: "https://hooks.slack.com/services/T00/B00/XXX"
+#     min_severity: "severe"
+#     events: []
+#   - name: "tornado-only"
+#     kind: "discord"
+#     url: "https://discord.com/api/webhooks/.../..."
+#     min_severity: "extreme"
+#     events: ["tornado"]
+#   - name: "ntfy"
+#     kind: "generic"
+#     url: "https://ntfy.sh/my-weather-topic"
+
+# Optional Ollama (LLM) for the AI briefing endpoint. Empty disables it.
+ollama:
+  url: ""                  # e.g. "http://ollama.local:11434"
+  model: "llama3.1:8b"
+
+# Radar Time Machine snapshot DB.
+timemachine:
+  db_path: "/data/timemachine.db"
+  interval_sec: 60
+  retention_hours: 12

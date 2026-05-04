@@ -1,0 +1,27 @@
+services:
+  api:
+    build: ./api
+    restart: unless-stopped
+    environment:
+      WX_CONFIG: /etc/weather-dashboard/config.yaml
+    volumes:
+      - ./config.yaml:/etc/weather-dashboard/config.yaml:ro
+      - timemachine:/data
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health',timeout=2).status==200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  ui:
+    build: ./ui
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "8080:8080"
+
+volumes:
+  timemachine:

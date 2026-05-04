@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: weather-config
+  namespace: weather
+data:
+  config.yaml: |
+    observer:
+      lat: 39.5
+      lon: -84.5
+      location: "Dayton, OH"
+      state: "OH"
+    nws_user_agent: "(weather-dashboard, contact@example.org)"
+    sender_email: "noreply@example.org"
+    api_keys:
+      airnow: ""
+      openweathermap: ""
+    webhooks: []
+    ollama:
+      url: ""
+      model: "llama3.1:8b"
+    timemachine:
+      db_path: "/data/timemachine.db"
+      interval_sec: 60
+      retention_hours: 12
