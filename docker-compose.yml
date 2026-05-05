@@ -1,5 +1,5 @@
 services:
-  api:
+  weather-api:
     build: ./api
     restart: unless-stopped
     environment:
@@ -15,11 +15,11 @@ services:
       timeout: 5s
       retries: 3
 
-  ui:
+  weather-ui:
     build: ./ui
     restart: unless-stopped
     depends_on:
-      - api
+      - weather-api
     ports:
       - "8080:8080"
 

@@ -356,7 +356,7 @@ export default function App() {
     ),
     [activeAlerts],
   )
-  const homeCenter: [number, number] = [config?.lat ?? 39.5, config?.lon ?? -84.5]
+  const homeCenter: [number, number] = [config?.lat ?? 39.5, config?.lon ?? -98.5]
 
   // Audio alarm + browser notification for new tornado warnings & emergencies
   const alarm = useEmergencyAlarm(activeAlerts)

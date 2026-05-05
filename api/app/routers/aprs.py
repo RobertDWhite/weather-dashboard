@@ -1,4 +1,13 @@
+"""APRS weather-station passthrough.
+
+Optional integration with an upstream APRS receiver. Set the APRS_SOURCE_URL
+env var (or `aprs_source_url` in config.yaml) to a base URL that exposes
+`/api/v1/aprs/stations`. Disabled by default — the endpoint returns an empty
+list when no source is configured.
+"""
+import os
 import re
+
 import httpx
 from cachetools import TTLCache
 from fastapi import APIRouter
@@ -6,7 +15,7 @@ from fastapi import APIRouter
 router = APIRouter()
 
 _cache: TTLCache = TTLCache(maxsize=4, ttl=60)
-SDR_API = "http://sdr-viewer-api.sdr-research.svc.cluster.local:8000"
+SDR_API = os.environ.get("APRS_SOURCE_URL", "")
 
 _C_RE = re.compile(r'c(\d{3})')
 _S_RE = re.compile(r's(\d{3})')
@@ -57,6 +66,8 @@ def _parse_wx(comment: str | None) -> dict | None:
 
 @router.get("/stations")
 async def get_aprs_stations(hours: int = 24):
+    if not SDR_API:
+        return {"stations": [], "hours": hours, "configured": False}
     key = f"stations-{hours}"
     if key in _cache:
         return _cache[key]

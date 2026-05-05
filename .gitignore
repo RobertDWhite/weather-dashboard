@@ -27,6 +27,10 @@ config.yaml
 !config.example.yaml
 config/config.yaml
 
+# Local docker-compose overrides
+docker-compose.override.yml
+docker-compose.override.yaml
+
 # Runtime data
 data/
 *.db

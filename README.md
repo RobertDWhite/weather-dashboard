@@ -20,6 +20,16 @@ Built around the US National Weather Service `api.weather.gov`, NOAA SPC, Aviati
 - **Notifications** — VAPID web push (browser), CAP 1.2 feed (`/api/cap/active.xml`), and webhook fan-out to Slack / Discord / generic HTTP.
 - **PWA** — installable, offline shell, dark-mode native, prefers-reduced-motion friendly.
 
+## Screenshots
+
+<!-- TODO: add screenshots before launch. Suggested shots:
+     1. Main map view with active alerts overlay
+     2. Radar with NEXRAD + ProbSevere
+     3. Aviation panel with METARs
+     4. Mobile / PWA view
+-->
+_Coming soon — running [demo](https://weather.example.org) is in the works._
+
 ## Quickstart (Docker Compose)
 
 ```bash
