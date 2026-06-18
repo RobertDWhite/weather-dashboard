@@ -30,7 +30,7 @@ async def lifespan(app: FastAPI):
             pass
 
 
-app = FastAPI(title="Weather Dashboard API", version="0.1.0", lifespan=lifespan)
+app = FastAPI(title="Weather Dashboard API", version="0.1.1", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
