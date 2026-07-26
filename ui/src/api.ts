@@ -1,7 +1,7 @@
 import type {
   ActiveStormsResponse,
   AppConfig,
-  AprsStation,
+  AprsResponse,
   AqiCurrent,
   BriefingResponse,
   Camera,
@@ -92,7 +92,7 @@ export const fetchOhgoCameras = (lat: number, lon: number, radiusMiles = 50, s?:
   get<OhgoCamera[]>(`/ohgo/nearby?lat=${lat}&lon=${lon}&radius=${radiusMiles}`, s)
 
 export const fetchAprsStations = (s?: AbortSignal) =>
-  get<{ stations: AprsStation[]; hours: number }>('/aprs/stations', s)
+  get<AprsResponse>('/aprs/stations', s)
 
 export const fetchZoneGeometries = (zonePaths: string[], s?: AbortSignal) =>
   get<Record<string, GeoJSON.Geometry>>(`/nws/zone-geometries?ids=${zonePaths.map(encodeURIComponent).join(',')}`, s)

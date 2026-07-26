@@ -353,7 +353,7 @@ export default function AlertsMap({
 
         {showRangeRings && <RangeRings center={homeCenter} />}
 
-        {/* APRS weather stations */}
+        {/* APRS stations */}
         {(aprsStations ?? []).map((s) => {
           const wx = s.weather
           return (

@@ -235,6 +235,13 @@ export interface AprsStation {
   frequency_hz: number | null
 }
 
+export interface AprsResponse {
+  stations: AprsStation[]
+  hours: number
+  stale?: boolean
+  source_error?: string
+}
+
 export interface GoesUrls {
   generated: number
   GOES16: {

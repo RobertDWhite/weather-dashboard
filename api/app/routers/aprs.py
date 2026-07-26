@@ -1,9 +1,8 @@
-"""APRS weather-station passthrough.
+"""APRS station passthrough.
 
 Optional integration with an upstream APRS receiver. Set the APRS_SOURCE_URL
 env var (or `aprs_source_url` in config.yaml) to a base URL that exposes
-`/api/v1/aprs/stations`. Disabled by default — the endpoint returns an empty
-list when no source is configured.
+`/api/v1/aprs/stations`. Disabled by default.
 """
 import os
 import re
@@ -15,6 +14,7 @@ from fastapi import APIRouter
 router = APIRouter()
 
 _cache: TTLCache = TTLCache(maxsize=4, ttl=60)
+_last_good: dict[str, dict] = {}
 SDR_API = os.environ.get("APRS_SOURCE_URL", "")
 
 _C_RE = re.compile(r'c(\d{3})')
@@ -76,16 +76,30 @@ async def get_aprs_stations(hours: int = 24):
             r = await client.get(f"{SDR_API}/api/v1/aprs/stations", params={"hours": hours})
             r.raise_for_status()
             data = r.json()
+            raw_stations = data.get("stations", []) if isinstance(data, dict) else data
             stations = []
-            for s in data.get("stations", []):
+            for s in raw_stations if isinstance(raw_stations, list) else []:
+                if not isinstance(s, dict):
+                    continue
                 if s.get("latitude") is None or s.get("longitude") is None:
                     continue
-                wx = _parse_wx(s.get("comment"))
-                if wx is None:
-                    continue
-                stations.append({**s, "is_weather": True, "weather": wx})
+                # The upstream SDR service already parses APRS weather. Keep
+                # that richer object when available, while retaining moving
+                # stations and digipeaters that do not carry WX telemetry.
+                wx = s.get("weather") or _parse_wx(s.get("comment"))
+                stations.append({
+                    **s,
+                    "is_weather": bool(s.get("is_weather") or wx),
+                    "weather": wx,
+                })
             result = {"stations": stations, "hours": hours}
             _cache[key] = result
+            _last_good[key] = result
             return result
     except Exception:
-        return {"stations": [], "hours": hours}
+        # Do not make a transient SDR/DB outage erase the last visible map.
+        # The explicit flag also lets clients distinguish “no APRS heard”
+        # from “APRS source unavailable”.
+        if key in _last_good:
+            return {**_last_good[key], "stale": True, "source_error": "upstream_unavailable"}
+        return {"stations": [], "hours": hours, "source_error": "upstream_unavailable"}

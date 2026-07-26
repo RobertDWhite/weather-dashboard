@@ -337,7 +337,7 @@ export default function RadarMap({
             </>
           </LayersControl.Overlay>
           {/* APRS Weather Stations */}
-          <LayersControl.Overlay checked name="🌡 APRS Weather">
+          <LayersControl.Overlay checked name="📡 APRS Signals">
             <>
               {(aprsStations ?? []).map((s) => {
                 const wx = s.weather
