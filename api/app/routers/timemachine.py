@@ -25,6 +25,25 @@ _HEADERS = {"User-Agent": settings.nws_user_agent, "Accept": "application/geo+js
 _conn: sqlite3.Connection | None = None
 _lock = asyncio.Lock()
 _ready = False
+_db_error_until = 0.0
+
+
+def _db_unavailable_response() -> dict:
+    return {
+        "ready": False,
+        "interval_sec": settings.timemachine_interval_sec,
+        "retention_hours": settings.timemachine_retention_hours,
+        "count": 0,
+        "snapshots": [],
+        "error": "time machine storage is temporarily unavailable",
+    }
+
+
+def _mark_db_error() -> None:
+    global _db_error_until
+    # Avoid repeatedly touching a degraded network block device from the
+    # request path. The snapshotter will retry after this short circuit.
+    _db_error_until = _time.time() + 60
 
 
 def _connect() -> sqlite3.Connection:
@@ -33,6 +52,7 @@ def _connect() -> sqlite3.Connection:
         path = settings.timemachine_db_path
         os.makedirs(os.path.dirname(path), exist_ok=True)
         _conn = sqlite3.connect(path, check_same_thread=False, isolation_level=None)
+        _conn.execute("PRAGMA busy_timeout=500")
         _conn.execute("PRAGMA journal_mode=WAL")
         _conn.execute("PRAGMA synchronous=NORMAL")
         _conn.execute("""
@@ -95,6 +115,8 @@ _seen_event_keys: set[str] = set()
 
 
 async def _persist_snapshot(snap: dict) -> None:
+    if _time.time() < _db_error_until:
+        return
     counts = _summary_counts(snap)
     payload = gzip.compress(json.dumps(snap).encode("utf-8"))
     async with _lock:
@@ -171,6 +193,8 @@ async def snapshot_loop():
             except asyncio.CancelledError:
                 raise
             except Exception as e:
+                if isinstance(e, (OSError, sqlite3.Error)):
+                    _mark_db_error()
                 print(f"[timemachine] snapshot error: {e}")
                 try:
                     from app.metrics import snapshot_errors
@@ -190,13 +214,22 @@ async def list_snapshots(
     hours: int = Query(6, ge=1, le=24),
 ):
     """Return timestamps + summary counts for snapshots in the last N hours."""
-    conn = _connect()
-    cutoff = int(_time.time()) - hours * 3600
-    rows = conn.execute(
-        "SELECT ts, alert_count, lsr_count, tornado_count, hail_count, wind_count "
-        "FROM snapshot WHERE ts >= ? ORDER BY ts ASC",
-        (cutoff,),
-    ).fetchall()
+    if _time.time() < _db_error_until:
+        return _db_unavailable_response()
+    try:
+        conn = _connect()
+        cutoff = int(_time.time()) - hours * 3600
+        rows = conn.execute(
+            "SELECT ts, alert_count, lsr_count, tornado_count, hail_count, wind_count "
+            "FROM snapshot WHERE ts >= ? ORDER BY ts ASC",
+            (cutoff,),
+        ).fetchall()
+    except (OSError, sqlite3.Error) as exc:
+        # The UI should remain usable while a fresh PVC is mounting or the
+        # database is being recovered. An empty, explicit response is more
+        # useful than a generic 500 and lets the scrubber retry later.
+        _mark_db_error()
+        return {**_db_unavailable_response(), "error": f"time machine unavailable: {exc}"}
     return {
         "ready": _ready,
         "interval_sec": settings.timemachine_interval_sec,
@@ -223,12 +256,18 @@ async def snapshot_at(
     """Return the snapshot whose timestamp is nearest the requested ts.
     The full alerts/LSRs payloads are included verbatim so the UI can render
     them with the same components used in live mode."""
-    conn = _connect()
-    # Get nearest snapshot by absolute time delta
-    row = conn.execute(
-        "SELECT ts, payload FROM snapshot ORDER BY ABS(ts - ?) ASC LIMIT 1",
-        (ts,),
-    ).fetchone()
+    if _time.time() < _db_error_until:
+        raise HTTPException(status_code=503, detail="time machine storage is temporarily unavailable")
+    try:
+        conn = _connect()
+        # Get nearest snapshot by absolute time delta
+        row = conn.execute(
+            "SELECT ts, payload FROM snapshot ORDER BY ABS(ts - ?) ASC LIMIT 1",
+            (ts,),
+        ).fetchone()
+    except (OSError, sqlite3.Error) as exc:
+        _mark_db_error()
+        raise HTTPException(status_code=503, detail=f"time machine storage unavailable: {exc}")
     if not row:
         raise HTTPException(status_code=404, detail="no snapshots available yet")
     snap_ts = row[0]

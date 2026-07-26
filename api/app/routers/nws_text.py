@@ -86,7 +86,7 @@ async def get_afd(
     if cached:
         return cached
 
-    async with httpx.AsyncClient(timeout=20) as client:
+    async with httpx.AsyncClient(timeout=20, follow_redirects=True) as client:
         try:
             wfo = await _wfo_for_point(client, lat, lon)
             if not wfo:

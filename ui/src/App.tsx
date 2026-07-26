@@ -10,6 +10,7 @@ import type {
 } from './types'
 import {
   fetchActiveStorms, fetchAlerts, fetchAprsStations, fetchConfig, fetchCurrent,
+  fetchLocalAlerts,
   fetchForecast, fetchLsrs, fetchMesoscale, fetchMetarMesh, fetchQuakes,
   fetchSpcWatches, fetchSpotters, fetchStormCells, fetchStormReports,
   fetchTimeMachineAt, fetchWildfires, postPrioritize,
@@ -63,6 +64,7 @@ export default function App() {
   const [config, setConfig] = useState<AppConfig | null>(null)
   const [current, setCurrent] = useState<CurrentConditions | null>(null)
   const [alerts, setAlerts] = useState<NWSAlertsResponse | null>(null)
+  const [localAlerts, setLocalAlerts] = useState<NWSAlertsResponse | null>(null)
   const [forecast, setForecast] = useState<{ hourly: HourlyPeriod[]; daily: DailyPeriod[] } | null>(null)
   const [reports, setReports] = useState<StormReports | null>(null)
   const [aprsStations, setAprsStations] = useState<AprsStation[]>([])
@@ -143,9 +145,10 @@ export default function App() {
   const refresh = useCallback(async () => {
     const myGen = ++refreshGen.current
     try {
-      const [cur, al, fcst, rpt, aprs, nhc, ww, md, lsr] = await Promise.allSettled([
+      const [cur, al, localAl, fcst, rpt, aprs, nhc, ww, md, lsr] = await Promise.allSettled([
         fetchCurrent(),
         fetchAlerts(),
+        fetchLocalAlerts(),
         fetchForecast(),
         fetchStormReports(),
         fetchAprsStations(),
@@ -158,6 +161,7 @@ export default function App() {
       if (refreshGen.current !== myGen) return
       if (cur.status === 'fulfilled') setCurrent(cur.value)
       if (al.status === 'fulfilled') setAlerts(al.value)
+      if (localAl.status === 'fulfilled') setLocalAlerts(localAl.value)
       if (fcst.status === 'fulfilled') {
         setForecast(fcst.value as { hourly: HourlyPeriod[]; daily: DailyPeriod[] })
       }
@@ -275,7 +279,10 @@ export default function App() {
   }, [refresh])
 
   // Effective alerts: live by default, or snapshot when time-machine engaged
-  const liveAlerts = useMemo(() => alerts?.features ?? [], [alerts])
+  const liveAlerts = useMemo(
+    () => localAlerts?.features ?? alerts?.features ?? [],
+    [alerts, localAlerts],
+  )
   const rawActiveAlerts = useMemo(() => {
     if (snapshot && timeMachineTs !== null) {
       return (snapshot.alerts?.features ?? []) as typeof liveAlerts

@@ -10,27 +10,29 @@ _HEADERS = {"User-Agent": "weather-dashboard (+https://github.com/RobertDWhite/w
 # Zone polygons are essentially static (changes are extremely rare); cache long.
 _cache: TTLCache = TTLCache(maxsize=8, ttl=86400)
 
-# NOAA NWS GIS feature services. Each returns GeoJSON when f=geojson.
+# NOAA NWS GIS feature services. The service path is case-sensitive on the
+# current ArcGIS deployment; layer IDs are the published NWS reference map
+# layers (CWA 1, coastal marine 5, public 8, fire 9).
 _LAYERS = {
     "cwa": (
         "https://mapservices.weather.noaa.gov/static/rest/services/"
-        "NWS_Reference_Maps/NWS_Reference_Map/MapServer/4/query"
-        "?where=1%3D1&outFields=CWA,WFO&f=geojson"
+        "nws_reference_maps/nws_reference_map/MapServer/1/query"
+        "?where=1%3D1&outFields=CWA,WFO&outSR=4326&maxAllowableOffset=5000&f=geojson"
     ),
     "fire": (
         "https://mapservices.weather.noaa.gov/static/rest/services/"
-        "NWS_Reference_Maps/NWS_Reference_Map/MapServer/2/query"
-        "?where=1%3D1&outFields=STATE,ZONE,NAME&f=geojson"
+        "nws_reference_maps/nws_reference_map/MapServer/9/query"
+        "?where=1%3D1&outFields=STATE,ZONE,NAME&outSR=4326&maxAllowableOffset=5000&f=geojson"
     ),
     "public": (
         "https://mapservices.weather.noaa.gov/static/rest/services/"
-        "NWS_Reference_Maps/NWS_Reference_Map/MapServer/1/query"
-        "?where=1%3D1&outFields=STATE,ZONE,NAME&f=geojson"
+        "nws_reference_maps/nws_reference_map/MapServer/8/query"
+        "?where=1%3D1&outFields=STATE,ZONE,NAME&outSR=4326&maxAllowableOffset=5000&f=geojson"
     ),
     "marine": (
         "https://mapservices.weather.noaa.gov/static/rest/services/"
-        "NWS_Reference_Maps/NWS_Reference_Map/MapServer/3/query"
-        "?where=1%3D1&outFields=ID,NAME&f=geojson"
+        "nws_reference_maps/nws_reference_map/MapServer/5/query"
+        "?where=1%3D1&outFields=ID,NAME&outSR=4326&maxAllowableOffset=5000&f=geojson"
     ),
 }
 

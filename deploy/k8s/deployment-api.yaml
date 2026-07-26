@@ -24,6 +24,7 @@ spec:
       containers:
         - name: weather-api
           image: ghcr.io/robertdwhite/weather-dashboard-api
+          imagePullPolicy: Always
           ports:
             - containerPort: 8000
               name: http

@@ -102,7 +102,9 @@ async def health_upstreams():
     import httpx
 
     sources = {
-        "nws_alerts": "https://api.weather.gov/alerts/active?limit=1",
+        # The NWS active-alerts endpoint has no `limit` query parameter. A
+        # small status-only request is still cheap and avoids a false red dot.
+        "nws_alerts": "https://api.weather.gov/alerts/active?status=actual",
         "spc_outlook": "https://www.spc.noaa.gov/products/outlook/day1otlk_cat.nolyr.geojson",
         "spc_reports": "https://www.spc.noaa.gov/climo/reports/today_filtered_torn.csv",
         "rainviewer": "https://api.rainviewer.com/public/weather-maps.json",
@@ -110,7 +112,6 @@ async def health_upstreams():
         "nhc": "https://www.nhc.noaa.gov/CurrentStorms.json",
         "aviation_metar": "https://aviationweather.gov/api/data/metar?format=json&ids=KORD",
         "iem_lsr": "https://mesonet.agron.iastate.edu/geojson/lsr.geojson?hours=1",
-        "iem_ridge": "https://mesonet.agron.iastate.edu/data/gis/images/4326/ridge/KILN/N0Q_0.json",
     }
 
     async def _probe(name: str, url: str):

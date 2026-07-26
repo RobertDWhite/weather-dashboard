@@ -53,6 +53,11 @@ export const fetchForecast = (s?: AbortSignal) =>
 export const fetchAlerts = (s?: AbortSignal) =>
   get<NWSAlertsResponse>('/nws/alerts', s)
 
+/** Alerts intersecting the deployment's observer area. The map still uses the
+ * unfiltered feed; threat banners and summaries use this local feed. */
+export const fetchLocalAlerts = (s?: AbortSignal) =>
+  get<NWSAlertsResponse>('/nws/alerts?local=true', s)
+
 export const fetchNwsForecast = (s?: AbortSignal) =>
   get<{ periods: object[]; wfo: string; timezone: string }>('/nws/forecast', s)
 
