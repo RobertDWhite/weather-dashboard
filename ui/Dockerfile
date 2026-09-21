@@ -1,4 +1,5 @@
-FROM node:20-alpine AS builder
+# Build on the native runner arch — output is static files, so no need to emulate arm64 (QEMU hangs)
+FROM --platform=$BUILDPLATFORM node:20-alpine AS builder
 WORKDIR /app
 COPY package.json .
 RUN npm install
