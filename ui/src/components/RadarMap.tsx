@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, MutableRefObject } from 'react'
-import { MapContainer, TileLayer, GeoJSON, LayersControl, CircleMarker, Popup, useMap, ScaleControl } from 'react-leaflet'
+import { MapContainer, TileLayer, GeoJSON, LayersControl, LayerGroup, CircleMarker, Popup, useMap, ScaleControl } from 'react-leaflet'
 import type { Map as LeafletMap } from 'leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -206,12 +206,21 @@ export default function RadarMap({
 
         <LayersControl position="topright">
           {/* Base layers */}
+          {/* CARTO basemaps now require an API key (watermark otherwise) — use Esri's key-free dark canvas */}
           <LayersControl.BaseLayer checked name="🗺️ Dark">
-            <TileLayer
-              url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-              attribution='&copy; <a href="https://carto.com/">CARTO</a>'
-              zIndex={1}
-            />
+            <LayerGroup>
+              <TileLayer
+                url="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}"
+                attribution="Esri, HERE, Garmin, OpenStreetMap contributors"
+                maxNativeZoom={16}
+                zIndex={1}
+              />
+              <TileLayer
+                url="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}"
+                maxNativeZoom={16}
+                zIndex={2}
+              />
+            </LayerGroup>
           </LayersControl.BaseLayer>
           <LayersControl.BaseLayer name="🛰️ Satellite">
             <TileLayer
@@ -223,8 +232,9 @@ export default function RadarMap({
           </LayersControl.BaseLayer>
           <LayersControl.BaseLayer name="🗺️ Street">
             <TileLayer
-              url="https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png"
-              attribution='&copy; <a href="https://carto.com/">CARTO</a>'
+              url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+              maxNativeZoom={19}
               zIndex={1}
             />
           </LayersControl.BaseLayer>

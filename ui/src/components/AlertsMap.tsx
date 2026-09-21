@@ -243,10 +243,17 @@ export default function AlertsMap({
         <PopupCameraWirer onCamera={(lat, lon, label) => setCameraTarget({ lat, lon, label })} />
         <ScaleControl position="bottomright" imperial={true} metric={true} />
 
+        {/* CARTO basemaps now require an API key (watermark otherwise) — use Esri's key-free dark canvas */}
         <TileLayer
-          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-          attribution='&copy; <a href="https://carto.com/">CARTO</a>'
+          url="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}"
+          attribution="Esri, HERE, Garmin, OpenStreetMap contributors"
+          maxNativeZoom={16}
           zIndex={1}
+        />
+        <TileLayer
+          url="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}"
+          maxNativeZoom={16}
+          zIndex={2}
         />
 
         {/* Zone-based alerts (lighter, dashed) */}
