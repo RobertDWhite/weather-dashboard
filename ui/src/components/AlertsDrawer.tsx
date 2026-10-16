@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
-import { useWindowWidth } from '../hooks/useWindowWidth'
 import { format, parseISO } from 'date-fns'
 import type { NWSAlert } from '../types'
 import CameraPanel from './CameraPanel'
+import { useDialog } from '../hooks/useDialog'
 import { buildAlertQuery } from '../alertQuery'
 
 interface Props {
+  title?: string
   alerts: NWSAlert[]
   onLocate: (lat: number, lon: number, zoom?: number) => void
   onClose: () => void
@@ -60,8 +61,8 @@ function centroid(geo: NWSAlert['geometry']): [number, number] | null {
   ]
 }
 
-export default function AlertsDrawer({ alerts, onLocate, onClose, focusAlertId }: Props) {
-  const isMobile = useWindowWidth() < 768
+export default function AlertsDrawer({ alerts, onLocate, onClose, focusAlertId, title = 'Active Alerts' }: Props) {
+  const dialogRef = useDialog(onClose)
   const [search, setSearch] = useState('')
   const [expandedId, setExpandedId] = useState<string | null>(focusAlertId ?? null)
   const listRef = useRef<HTMLDivElement>(null)
@@ -112,6 +113,7 @@ export default function AlertsDrawer({ alerts, onLocate, onClose, focusAlertId }
     >
       <div
         className="alerts-drawer-panel"
+        ref={dialogRef} role="dialog" aria-modal="true" aria-label="Alert details" tabIndex={-1}
         style={{
           width: 500,
           maxWidth: '96vw',
@@ -140,9 +142,9 @@ export default function AlertsDrawer({ alerts, onLocate, onClose, focusAlertId }
           <span style={{ fontSize: 20 }}>⚠️</span>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--warn-red)', letterSpacing: 1.5, textTransform: 'uppercase' }}>
-              Active Alerts
+              {title}
             </div>
-            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
               {alerts.length} total · click any alert to jump map
             </div>
           </div>
@@ -165,7 +167,7 @@ export default function AlertsDrawer({ alerts, onLocate, onClose, focusAlertId }
         {/* Search */}
         <div style={{ padding: '8px 14px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
           <input
-            autoFocus={!isMobile}
+            aria-label="Filter alerts"
             placeholder="Filter by event, area, or office…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -190,7 +192,7 @@ export default function AlertsDrawer({ alerts, onLocate, onClose, focusAlertId }
               <div key={sev} style={{ marginBottom: 16 }}>
                 <div
                   style={{
-                    fontSize: 10,
+                    fontSize: 12,
                     fontWeight: 800,
                     letterSpacing: 2,
                     color,
@@ -253,25 +255,25 @@ export default function AlertsDrawer({ alerts, onLocate, onClose, focusAlertId }
                             <div style={{ fontWeight: 700, fontSize: 12, color: 'var(--text-primary)', marginBottom: 2 }}>
                               {a.properties.event}
                             </div>
-                            <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 2 }}>
+                            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 2 }}>
                               {a.properties.areaDesc}
                             </div>
                             {endsStr && (
-                              <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>
+                              <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
                                 Until {endsStr}
                                 {a.properties.senderName ? ` · ${a.properties.senderName.replace('NWS ', '')}` : ''}
                               </div>
                             )}
                           </div>
                           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0 }}>
-                            <span style={{ fontSize: 9, color: isExpanded ? color : 'var(--text-muted)', letterSpacing: 0.5 }}>
+                            <span style={{ fontSize: 12, color: isExpanded ? color : 'var(--text-muted)', letterSpacing: 0.5 }}>
                               {isExpanded ? '▲ LESS' : '▼ MORE'}
                             </span>
                             {canLocate && (
                               <button
                                 onClick={(e) => { e.stopPropagation(); handleLocate(a) }}
                                 style={{
-                                  fontSize: 9,
+                                  fontSize: 12,
                                   color: 'var(--accent-cyan)',
                                   background: 'rgba(0,212,255,0.08)',
                                   border: '1px solid rgba(0,212,255,0.25)',
@@ -300,14 +302,14 @@ export default function AlertsDrawer({ alerts, onLocate, onClose, focusAlertId }
                             }}
                           >
                             {a.properties.headline && (
-                              <div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.5, paddingTop: 8 }}>
+                              <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5, paddingTop: 8 }}>
                                 {a.properties.headline}
                               </div>
                             )}
                             {a.properties.description && (
                               <div
                                 style={{
-                                  fontSize: 10,
+                                  fontSize: 12,
                                   color: 'var(--text-muted)',
                                   lineHeight: 1.6,
                                   whiteSpace: 'pre-wrap',
@@ -323,7 +325,7 @@ export default function AlertsDrawer({ alerts, onLocate, onClose, focusAlertId }
                               </div>
                             )}
                             {a.properties.instruction && (
-                              <div style={{ fontSize: 10, color: color, lineHeight: 1.5, fontWeight: 600 }}>
+                              <div style={{ fontSize: 12, color: color, lineHeight: 1.5, fontWeight: 600 }}>
                                 ⚡ {a.properties.instruction}
                               </div>
                             )}

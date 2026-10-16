@@ -1,8 +1,9 @@
+import { useFeed } from '../hooks/useFeed'
+import { FeedStatus } from './FeedPanel'
 /** Aviation Weather Center products: TAFs (terminal area forecasts), PIREPs
  * (pilot reports), and the active SIGMET/AIRMET counts. Intended for the
  * sidebar — the overlay layers (PIREP markers) live in HazardLayers. */
-import { useEffect, useState } from 'react'
-import type { PirepEntry, TafEntry } from '../types'
+import { useState } from 'react'
 import { fetchAirmets, fetchPireps, fetchSigmets, fetchTafs } from '../api'
 
 interface Props {
@@ -21,33 +22,13 @@ const TAB_LABELS: Record<Tab, string> = {
 
 export default function AviationPanel({ homeLat, homeLon, onLocate }: Props) {
   const [tab, setTab] = useState<Tab>('taf')
-  const [tafs, setTafs] = useState<TafEntry[]>([])
-  const [pireps, setPireps] = useState<PirepEntry[]>([])
-  const [counts, setCounts] = useState<{ sigmet: number; airmet: number }>({ sigmet: 0, airmet: 0 })
-
-  useEffect(() => {
-    let cancelled = false
-    const tick = async () => {
-      try {
-        const [t, p, s, a] = await Promise.allSettled([
-          fetchTafs(homeLat, homeLon),
-          fetchPireps(homeLat, homeLon),
-          fetchSigmets(),
-          fetchAirmets(),
-        ])
-        if (cancelled) return
-        if (t.status === 'fulfilled') setTafs(t.value.tafs)
-        if (p.status === 'fulfilled') setPireps(p.value.pireps)
-        const c = { sigmet: 0, airmet: 0 }
-        if (s.status === 'fulfilled') c.sigmet = s.value.count
-        if (a.status === 'fulfilled') c.airmet = a.value.count
-        setCounts(c)
-      } catch { /* */ }
-    }
-    tick()
-    const t = setInterval(tick, 5 * 60_000)
-    return () => { cancelled = true; clearInterval(t) }
-  }, [homeLat, homeLon])
+  const taf = useFeed(`taf:${homeLat}:${homeLon}`, s => fetchTafs(homeLat, homeLon, s), { enabled: tab === 'taf', interval: 300_000 })
+  const pirep = useFeed(`pirep:${homeLat}:${homeLon}`, s => fetchPireps(homeLat, homeLon, s), { enabled: tab === 'pirep', interval: 300_000 })
+  const sigmet = useFeed('sigmet', fetchSigmets, { enabled: tab === 'sigmet', interval: 300_000 })
+  const airmet = useFeed('airmet', fetchAirmets, { enabled: tab === 'sigmet', interval: 300_000 })
+  const tafs = taf.data?.tafs ?? []
+  const pireps = pirep.data?.pireps ?? []
+  const counts = { sigmet: sigmet.data?.count ?? 'Unavailable', airmet: airmet.data?.count ?? 'Unavailable' }
 
   return (
     <div className="card">
@@ -73,6 +54,11 @@ export default function AviationPanel({ homeLat, homeLon, onLocate }: Props) {
         </div>
       </div>
 
+      {tab === 'taf' && <FeedStatus feed={taf} name="TAFs" />}
+      {tab === 'pirep' && <FeedStatus feed={pirep} name="Pilot reports" />}
+      {tab === 'sigmet' && <><FeedStatus feed={sigmet} name="SIGMETs" /><FeedStatus feed={airmet} name="AIRMETs" /></>}
+      {tab === 'taf' && taf.status === 'success' && !tafs.length && <p className="notice">No TAFs returned for this area.</p>}
+      {tab === 'pirep' && pirep.status === 'success' && !pireps.length && <p className="notice">No pilot reports returned for this area.</p>}
       <div style={{ padding: 6, maxHeight: 280, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 3 }}>
         {tab === 'taf' && tafs.map((t) => (
           <button

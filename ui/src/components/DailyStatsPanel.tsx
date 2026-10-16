@@ -23,13 +23,13 @@ function Stat({ label, value, color, sub }: { label: string; value: string | num
       flexDirection: 'column',
       gap: 1,
     }}>
-      <div style={{ fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+      <div style={{ fontSize: 12, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5 }}>
         {label}
       </div>
       <div style={{ fontSize: 16, fontWeight: 800, color: color ?? 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>
         {value}
       </div>
-      {sub && <div style={{ fontSize: 9, color: 'var(--text-muted)' }}>{sub}</div>}
+      {sub && <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{sub}</div>}
     </div>
   )
 }

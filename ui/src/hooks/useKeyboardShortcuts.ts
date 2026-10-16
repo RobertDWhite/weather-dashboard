@@ -10,6 +10,7 @@ export interface ShortcutMap {
 export function useKeyboardShortcuts(map: ShortcutMap) {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      if (document.querySelector('[aria-modal="true"]')) return
       const tgt = e.target as HTMLElement | null
       if (tgt) {
         const tag = tgt.tagName?.toLowerCase()

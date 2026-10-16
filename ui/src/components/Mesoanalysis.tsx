@@ -1,20 +1,16 @@
+import { useFeed } from '../hooks/useFeed'
+import { FeedStatus } from './FeedPanel'
 import { useEffect, useState } from 'react'
-import type { MesoanalysisCatalog } from '../types'
 import { fetchMesoanalysisCatalog } from '../api'
 
 export default function Mesoanalysis() {
-  const [catalog, setCatalog] = useState<MesoanalysisCatalog | null>(null)
+  const feed = useFeed('mesoanalysis', fetchMesoanalysisCatalog, { interval: 300_000 })
+  const catalog = feed.data
   const [groupIdx, setGroupIdx] = useState(0)
   const [paramCode, setParamCode] = useState<string>('mlcp')
   const [sector, setSector] = useState<string>('s19')
   const [bust, setBust] = useState<number>(() => Date.now())
   const [imgOk, setImgOk] = useState(true)
-
-  useEffect(() => {
-    const ac = new AbortController()
-    fetchMesoanalysisCatalog(ac.signal).then(setCatalog).catch(() => {})
-    return () => ac.abort()
-  }, [])
 
   // Auto-refresh image every 5 min
   useEffect(() => {
@@ -22,16 +18,9 @@ export default function Mesoanalysis() {
     return () => clearInterval(t)
   }, [])
 
-  if (!catalog) {
-    return (
-      <div className="card">
-        <div className="card-title">SPC Mesoanalysis</div>
-        <div style={{ color: 'var(--text-muted)', fontSize: 12, padding: 8 }}>Loading…</div>
-      </div>
-    )
-  }
-
-  const group = catalog.groups[groupIdx]
+  if (!catalog) return <FeedStatus feed={feed} name="Mesoanalysis" />
+  if (!catalog.groups.length) return <p className="notice">No mesoanalysis products available.</p>
+  const group = catalog.groups[groupIdx] ?? catalog.groups[0]
   const param = group.params.find((p) => p.code === paramCode) ?? group.params[0]
   const baseUrl = param?.urls[sector]
   // Strip any pre-existing cache-bust param the backend baked in, then add our own
@@ -39,6 +28,7 @@ export default function Mesoanalysis() {
 
   return (
     <div className="card" style={{ display: 'flex', flexDirection: 'column' }}>
+      <FeedStatus feed={feed} name="Mesoanalysis" />
       <div className="card-title" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
         <span>SPC Mesoanalysis</span>
         <span style={{ fontSize: 9, color: 'var(--text-muted)', fontWeight: 400, marginLeft: 'auto' }}>

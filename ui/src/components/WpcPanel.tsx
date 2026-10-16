@@ -46,7 +46,7 @@ export default function WpcPanel() {
   const [imgError, setImgError] = useState(false)
   const [bust, setBust] = useState<number>(() => Date.now())
 
-  useEffect(() => { setImgError(false) }, [tab])
+  useEffect(() => { setImgError(false) }, [tab, bust])
   useEffect(() => {
     const t = setInterval(() => setBust(Date.now()), 10 * 60_000)
     return () => clearInterval(t)
@@ -67,7 +67,7 @@ export default function WpcPanel() {
               style={{
                 padding: '1px 5px',
                 borderRadius: 3,
-                fontSize: 9,
+                fontSize: 12,
                 fontWeight: 700,
                 background: tab === d ? 'var(--accent-blue)' : 'var(--bg-base)',
                 color: tab === d ? '#fff' : 'var(--text-muted)',
@@ -100,15 +100,16 @@ export default function WpcPanel() {
             />
           </a>
         ) : (
-          <div style={{ padding: 16, textAlign: 'center', color: 'var(--text-muted)', fontSize: 11 }}>
+          <div style={{ padding: 16, textAlign: 'center', color: 'var(--text-muted)', fontSize: 12 }}>
             WPC image unavailable
+            <button onClick={() => setBust(Date.now())}>Retry</button>
           </div>
         )}
 
         {isEro && (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
             {ERO_LABELS.map(({ label, color }) => (
-              <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10 }}>
+              <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12 }}>
                 <div style={{ width: 10, height: 10, background: color, borderRadius: 2 }} />
                 <span style={{ color: 'var(--text-muted)' }}>{label}</span>
               </div>
@@ -120,7 +121,7 @@ export default function WpcPanel() {
           href="https://www.wpc.ncep.noaa.gov/"
           target="_blank"
           rel="noopener noreferrer"
-          style={{ fontSize: 10, color: 'var(--accent-cyan)', textDecoration: 'none' }}
+          style={{ fontSize: 12, color: 'var(--accent-cyan)', textDecoration: 'none' }}
         >
           → Weather Prediction Center ↗
         </a>

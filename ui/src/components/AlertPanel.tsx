@@ -2,6 +2,8 @@ import type { NWSAlert } from '../types'
 import { format, parseISO } from 'date-fns'
 
 interface Props {
+  title?: string
+  emptyLabel?: string
   alerts: NWSAlert[]
   onLocate: (lat: number, lon: number, zoom?: number) => void
   onOpenDrawer: (alertId: string) => void
@@ -28,13 +30,13 @@ const EVENT_EMOJI: Record<string, string> = {
   'High Wind Warning': '💨',
 }
 
-export default function AlertPanel({ alerts, onLocate, onOpenDrawer }: Props) {
+export default function AlertPanel({ alerts, onLocate, onOpenDrawer, title = 'Active Alerts', emptyLabel = 'No active watches or warnings' }: Props) {
   if (!alerts.length) {
     return (
       <div className="card">
-        <div className="card-title">⚠ Active Alerts</div>
+        <div className="card-title">⚠ {title}</div>
         <div style={{ color: 'var(--warn-green)', fontSize: 12, padding: '8px 0', display: 'flex', alignItems: 'center', gap: 6 }}>
-          ✓ No active watches or warnings
+          ✓ {emptyLabel}
         </div>
       </div>
     )
@@ -49,7 +51,7 @@ export default function AlertPanel({ alerts, onLocate, onOpenDrawer }: Props) {
   return (
     <div className="card">
       <div className="card-title">
-        <span>⚠ Active Alerts</span>
+        <span>⚠ {title}</span>
         <span style={{ marginLeft: 'auto', color: 'var(--warn-orange)', fontWeight: 700 }}>
           {alerts.length}
         </span>
@@ -74,10 +76,12 @@ export default function AlertPanel({ alerts, onLocate, onOpenDrawer }: Props) {
           }
 
           return (
-            <div
+            <button
+              type="button"
               key={a.properties.id}
               onClick={() => { locate(); onOpenDrawer(a.properties.id) }}
               style={{
+                textAlign: 'left', color: 'inherit',
                 padding: '7px 9px',
                 borderRadius: 5,
                 background: 'var(--bg-base)',
@@ -92,13 +96,13 @@ export default function AlertPanel({ alerts, onLocate, onOpenDrawer }: Props) {
                   {a.properties.event}
                 </span>
               </div>
-              <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{a.properties.areaDesc}</div>
+              <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{a.properties.areaDesc}</div>
               {endsStr && (
-                <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
                   Until {endsStr}
                 </div>
               )}
-            </div>
+            </button>
           )
         })}
       </div>

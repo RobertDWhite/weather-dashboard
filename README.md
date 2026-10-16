@@ -10,6 +10,10 @@ Built around the US National Weather Service `api.weather.gov`, NOAA SPC, Aviati
 
 ## Features
 
+- **Overview and Operations layouts** — local essentials first, expandable specialist tools, a grouped Layers drawer, and separate radar playback controls. Layout and layer choices persist locally.
+- **Feed status** — independent requests, explicit loading/unavailable/stale states, last successful update times, and retries. Failed local alert checks never display an all-clear.
+- **Historical replay** — archived national alerts and storm reports share a snapshot. Other live overlays pause; local warning notifications continue using fresh live alerts. Radar identifies its nearest available frame, whose coverage can be shorter than the archive.
+- **River stages** — USGS observations classified against matching NOAA NWPS station thresholds. Missing thresholds or stale observations show unknown status.
 - **Active alerts** — NWS warnings/watches/advisories with VTEC parsing, severity coloring, polygon overlays, and an emergency banner that announces tornado emergencies via screen reader.
 - **Radar** — NOAA NEXRAD per-site (5 products), MRMS composite, RainViewer animated, NOAA GeoServer WMS overlays, time-machine playback.
 - **Severe weather** — SPC outlooks, mesoanalysis, ProbSevere v3, GLM lightning, storm cells, LSRs, damage paths.

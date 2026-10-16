@@ -6,6 +6,8 @@ import type {
   BriefingResponse,
   Camera,
   CurrentConditions,
+  DailyPeriod,
+  HourlyPeriod,
   GoesUrls,
   HealthResponse,
   HrrrForecastResponse,
@@ -36,10 +38,22 @@ import type {
 
 const BASE = '/api'
 
-async function get<T>(path: string, signal?: AbortSignal): Promise<T> {
-  const r = await fetch(`${BASE}${path}`, { signal })
-  if (!r.ok) throw new Error(`${r.status} ${r.statusText} — ${path}`)
-  return r.json() as Promise<T>
+export async function get<T>(path: string, signal?: AbortSignal): Promise<T> {
+  const controller = new AbortController()
+  const abort = () => controller.abort()
+  if (signal?.aborted) controller.abort()
+  signal?.addEventListener('abort', abort, { once: true })
+  const timeout = setTimeout(abort, 20_000)
+  try {
+    const r = await fetch(`${BASE}${path}`, { signal: controller.signal })
+    if (!r.ok) throw new Error(`${r.status} ${r.statusText} — ${path}`)
+    const data = await r.json()
+    if (data?.stale || data?.source_error || data?.error) throw new Error(data.source_error || data.error || 'Source returned stale data')
+    return data as T
+  } finally {
+    clearTimeout(timeout)
+    signal?.removeEventListener('abort', abort)
+  }
 }
 
 export const fetchConfig = (s?: AbortSignal) => get<AppConfig>('/config', s)
@@ -48,7 +62,7 @@ export const fetchCurrent = (s?: AbortSignal) =>
   get<CurrentConditions>('/openmeteo/current', s)
 
 export const fetchForecast = (s?: AbortSignal) =>
-  get<{ hourly: object[]; daily: object[]; timezone: string }>('/openmeteo/forecast', s)
+  get<{ hourly: HourlyPeriod[]; daily: DailyPeriod[]; timezone: string }>('/openmeteo/forecast', s)
 
 export const fetchAlerts = (s?: AbortSignal) =>
   get<NWSAlertsResponse>('/nws/alerts', s)
@@ -216,44 +230,44 @@ export const fetchSpotters = (s?: AbortSignal) =>
   get<SpottersResponse>('/spotters/active', s)
 
 // Aviation
-export const fetchTafs = (lat?: number, lon?: number) => {
+export const fetchTafs = (lat?: number, lon?: number, s?: AbortSignal) => {
   const p = new URLSearchParams()
   if (lat != null) p.set('lat', String(lat))
   if (lon != null) p.set('lon', String(lon))
-  return get<{ tafs: import('./types').TafEntry[]; count: number }>(`/aviation/tafs${p.toString() ? `?${p}` : ''}`)
+  return get<{ tafs: import('./types').TafEntry[]; count: number }>(`/aviation/tafs${p.toString() ? `?${p}` : ''}`, s)
 }
-export const fetchPireps = (lat?: number, lon?: number) => {
+export const fetchPireps = (lat?: number, lon?: number, s?: AbortSignal) => {
   const p = new URLSearchParams()
   if (lat != null) p.set('lat', String(lat))
   if (lon != null) p.set('lon', String(lon))
-  return get<{ pireps: import('./types').PirepEntry[]; count: number }>(`/aviation/pireps${p.toString() ? `?${p}` : ''}`)
+  return get<{ pireps: import('./types').PirepEntry[]; count: number }>(`/aviation/pireps${p.toString() ? `?${p}` : ''}`, s)
 }
-export const fetchSigmets = () => get<{ sigmets: unknown[]; count: number }>('/aviation/sigmets')
-export const fetchAirmets = () => get<{ airmets: unknown[]; count: number }>('/aviation/airmets')
+export const fetchSigmets = (s?: AbortSignal) => get<{ sigmets: unknown[]; count: number }>('/aviation/sigmets', s)
+export const fetchAirmets = (s?: AbortSignal) => get<{ airmets: unknown[]; count: number }>('/aviation/airmets', s)
 
 // NWS zones
 export const fetchNwsZones = (layer: 'cwa' | 'fire' | 'public' | 'marine') =>
   get<GeoJSON.FeatureCollection>(`/nws_zones/${layer}`)
 
 // Marine
-export const fetchBuoys = (lat?: number, lon?: number) => {
+export const fetchBuoys = (lat?: number, lon?: number, s?: AbortSignal) => {
   const p = new URLSearchParams()
   if (lat != null) p.set('lat', String(lat))
   if (lon != null) p.set('lon', String(lon))
-  return get<{ buoys: import('./types').BuoyEntry[] }>(`/marine/buoys${p.toString() ? `?${p}` : ''}`)
+  return get<{ buoys: import('./types').BuoyEntry[] }>(`/marine/buoys${p.toString() ? `?${p}` : ''}`, s)
 }
-export const fetchTides = (lat?: number, lon?: number) => {
+export const fetchTides = (lat?: number, lon?: number, s?: AbortSignal) => {
   const p = new URLSearchParams()
   if (lat != null) p.set('lat', String(lat))
   if (lon != null) p.set('lon', String(lon))
-  return get<{ tides: import('./types').TideEntry[] }>(`/marine/tides${p.toString() ? `?${p}` : ''}`)
+  return get<{ tides: import('./types').TideEntry[] }>(`/marine/tides${p.toString() ? `?${p}` : ''}`, s)
 }
 
 // Damage paths + hazards + verification + cell tracks
 export const fetchDamage = (days = 7) =>
   get<{ tracks: GeoJSON.FeatureCollection; count: number; days: number }>(`/damage/recent?days=${days}`)
 export const fetchHazardsAll = () => get<GeoJSON.FeatureCollection>('/hazards/all')
-export const fetchVerification = () => get<import('./types').VerificationResponse>('/verification/today')
+export const fetchVerification = (s?: AbortSignal) => get<import('./types').VerificationResponse>('/verification/today', s)
 export const fetchCellTracks = () => get<{ tracks: import('./types').CellTrack[]; count: number }>('/cell_tracks/recent')
 
 // Web push

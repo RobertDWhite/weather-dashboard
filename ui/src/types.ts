@@ -163,7 +163,18 @@ export interface RadarTimestamps {
   }
 }
 
+export interface FloodThresholds {
+  action?: number
+  minor?: number
+  moderate?: number
+  major?: number
+  source: string
+  lid?: string
+  unit: string
+}
+
 export interface RiverGauge {
+  thresholds?: FloodThresholds | null
   siteCode: string
   siteName: string
   lat: number

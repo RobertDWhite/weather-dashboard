@@ -1,0 +1,1294 @@
+{
+  "/config": {
+    "lat": 39.5,
+    "lon": -84.5,
+    "location": "Review fixture \u00b7 Dayton, OH",
+    "state": "OH",
+    "hasOwmKey": false,
+    "hasAirnowKey": false,
+    "hasWebhook": false
+  },
+  "/openmeteo/current": {
+    "temperature": 72,
+    "feelsLike": 71,
+    "dewPoint": 50,
+    "humidity": 46,
+    "precipitation": 0,
+    "weatherCode": 1,
+    "condition": "Partly cloudy",
+    "icon": "\u26c5",
+    "cloudCover": 35,
+    "windSpeed": 8,
+    "windDirection": 220,
+    "windGusts": 14,
+    "pressure": 1015,
+    "visibility": 16093,
+    "isDay": 1,
+    "time": "2026-10-16T18:57:58.356277+00:00",
+    "timezone": "America/New_York"
+  },
+  "/openmeteo/forecast": {
+    "hourly": [
+      {
+        "time": "2026-10-16T18:57:58.356277+00:00",
+        "temperature": 69,
+        "dewPoint": 50,
+        "feelsLike": 70,
+        "precipProbability": 0,
+        "precipitation": 0,
+        "weatherCode": 1,
+        "condition": "Partly cloudy",
+        "icon": "\u26c5",
+        "windSpeed": 8,
+        "windDirection": 220,
+        "windGusts": 14,
+        "cloudCover": 35,
+        "visibility": 16093
+      },
+      {
+        "time": "2026-10-16T19:57:58.356277+00:00",
+        "temperature": 70,
+        "dewPoint": 50,
+        "feelsLike": 70,
+        "precipProbability": 7,
+        "precipitation": 0,
+        "weatherCode": 1,
+        "condition": "Partly cloudy",
+        "icon": "\u26c5",
+        "windSpeed": 8,
+        "windDirection": 220,
+        "windGusts": 14,
+        "cloudCover": 35,
+        "visibility": 16093
+      },
+      {
+        "time": "2026-10-16T20:57:58.356277+00:00",
+        "temperature": 72,
+        "dewPoint": 50,
+        "feelsLike": 70,
+        "precipProbability": 13,
+        "precipitation": 0,
+        "weatherCode": 1,
+        "condition": "Partly cloudy",
+        "icon": "\u26c5",
+        "windSpeed": 8,
+        "windDirection": 220,
+        "windGusts": 14,
+        "cloudCover": 35,
+        "visibility": 16093
+      },
+      {
+        "time": "2026-10-16T21:57:58.356277+00:00",
+        "temperature": 73,
+        "dewPoint": 50,
+        "feelsLike": 70,
+        "precipProbability": 19,
+        "precipitation": 0,
+        "weatherCode": 1,
+        "condition": "Partly cloudy",
+        "icon": "\u26c5",
+        "windSpeed": 8,
+        "windDirection": 220,
+        "windGusts": 14,
+        "cloudCover": 35,
+        "visibility": 16093
+      },
+      {
+        "time": "2026-10-16T22:57:58.356277+00:00",
+        "temperature": 74,
+        "dewPoint": 50,
+        "feelsLike": 70,
+        "precipProbability": 25,
+        "precipitation": 0,
+        "weatherCode": 1,
+        "condition": "Partly cloudy",
+        "icon": "\u26c5",
+        "windSpeed": 8,
+        "windDirection": 220,
+        "windGusts": 14,
+        "cloudCover": 35,
+        "visibility": 16093
+      },
+      {
+        "time": "2026-10-16T23:57:58.356277+00:00",
+        "temperature": 75,
+        "dewPoint": 50,
+        "feelsLike": 70,
+        "precipProbability": 30,
+        "precipitation": 0,
+        "weatherCode": 1,
+        "condition": "Partly cloudy",
+        "icon": "\u26c5",
+        "windSpeed": 8,
+        "windDirection": 220,
+        "windGusts": 14,
+        "cloudCover": 35,
+        "visibility": 16093
+      },
+      {
+        "time": "2026-10-17T00:57:58.356277+00:00",
+        "temperature": 75,
+        "dewPoint": 50,
+        "feelsLike": 70,
+        "precipProbability": 34,
+        "precipitation": 0,
+        "weatherCode": 1,
+        "condition": "Partly cloudy",
+        "icon": "\u26c5",
+        "windSpeed": 8,
+        "windDirection": 220,
+        "windGusts": 14,
+        "cloudCover": 35,
+        "visibility": 16093
+      },
+      {
+        "time": "2026-10-17T01:57:58.356277+00:00",
+        "temperature": 75,
+        "dewPoint": 50,
+        "feelsLike": 70,
+        "precipProbability": 37,
+        "precipitation": 0,
+        "weatherCode": 1,
+        "condition": "Partly cloudy",
+        "icon": "\u26c5",
+        "windSpeed": 8,
+        "windDirection": 220,
+        "windGusts": 14,
+        "cloudCover": 35,
+        "visibility": 16093
+      },
+      {
+        "time": "2026-10-17T02:57:58.356277+00:00",
+        "temperature": 74,
+        "dewPoint": 50,
+        "feelsLike": 70,
+        "precipProbability": 39,
+        "precipitation": 0,
+        "weatherCode": 1,
+        "condition": "Partly cloudy",
+        "icon": "\u26c5",
+        "windSpeed": 8,
+        "windDirection": 220,
+        "windGusts": 14,
+        "cloudCover": 35,
+        "visibility": 16093
+      },
+      {
+        "time": "2026-10-17T03:57:58.356277+00:00",
+        "temperature": 74,
+        "dewPoint": 50,
+        "feelsLike": 70,
+        "precipProbability": 40,
+        "precipitation": 0,
+        "weatherCode": 1,
+        "condition": "Partly cloudy",
+        "icon": "\u26c5",
+        "windSpeed": 8,
+        "windDirection": 220,
+        "windGusts": 14,
+        "cloudCover": 35,
+        "visibility": 16093
+      },
+      {
+        "time": "2026-10-17T04:57:58.356277+00:00",
+        "temperature": 73,
+        "dewPoint": 50,
+        "feelsLike": 70,
+        "precipProbability": 40,
+        "precipitation": 0,
+        "weatherCode": 1,
+        "condition": "Partly cloudy",
+        "icon": "\u26c5",
+        "windSpeed": 8,
+        "windDirection": 220,
+        "windGusts": 14,
+        "cloudCover": 35,
+        "visibility": 16093
+      },
+      {
+        "time": "2026-10-17T05:57:58.356277+00:00",
+        "temperature": 71,
+        "dewPoint": 50,
+        "feelsLike": 70,
+        "precipProbability": 39,
+        "precipitation": 0,
+        "weatherCode": 1,
+        "condition": "Partly cloudy",
+        "icon": "\u26c5",
+        "windSpeed": 8,
+        "windDirection": 220,
+        "windGusts": 14,
+        "cloudCover": 35,
+        "visibility": 16093
+      },
+      {
+        "time": "2026-10-17T06:57:58.356277+00:00",
+        "temperature": 70,
+        "dewPoint": 50,
+        "feelsLike": 70,
+        "precipProbability": 36,
+        "precipitation": 0,
+        "weatherCode": 1,
+        "condition": "Partly cloudy",
+        "icon": "\u26c5",
+        "windSpeed": 8,
+        "windDirection": 220,
+        "windGusts": 14,
+        "cloudCover": 35,
+        "visibility": 16093
+      },
+      {
+        "time": "2026-10-17T07:57:58.356277+00:00",
+        "temperature": 68,
+        "dewPoint": 50,
+        "feelsLike": 70,
+        "precipProbability": 33,
+        "precipitation": 0,
+        "weatherCode": 1,
+        "condition": "Partly cloudy",
+        "icon": "\u26c5",
+        "windSpeed": 8,
+        "windDirection": 220,
+        "windGusts": 14,
+        "cloudCover": 35,
+        "visibility": 16093
+      },
+      {
+        "time": "2026-10-17T08:57:58.356277+00:00",
+        "temperature": 67,
+        "dewPoint": 50,
+        "feelsLike": 70,
+        "precipProbability": 29,
+        "precipitation": 0,
+        "weatherCode": 1,
+        "condition": "Partly cloudy",
+        "icon": "\u26c5",
+        "windSpeed": 8,
+        "windDirection": 220,
+        "windGusts": 14,
+        "cloudCover": 35,
+        "visibility": 16093
+      },
+      {
+        "time": "2026-10-17T09:57:58.356277+00:00",
+        "temperature": 66,
+        "dewPoint": 50,
+        "feelsLike": 70,
+        "precipProbability": 24,
+        "precipitation": 0,
+        "weatherCode": 1,
+        "condition": "Partly cloudy",
+        "icon": "\u26c5",
+        "windSpeed": 8,
+        "windDirection": 220,
+        "windGusts": 14,
+        "cloudCover": 35,
+        "visibility": 16093
+      },
+      {
+        "time": "2026-10-17T10:57:58.356277+00:00",
+        "temperature": 64,
+        "dewPoint": 50,
+        "feelsLike": 70,
+        "precipProbability": 18,
+        "precipitation": 0,
+        "weatherCode": 1,
+        "condition": "Partly cloudy",
+        "icon": "\u26c5",
+        "windSpeed": 8,
+        "windDirection": 220,
+        "windGusts": 14,
+        "cloudCover": 35,
+        "visibility": 16093
+      },
+      {
+        "time": "2026-10-17T11:57:58.356277+00:00",
+        "temperature": 64,
+        "dewPoint": 50,
+        "feelsLike": 70,
+        "precipProbability": 12,
+        "precipitation": 0,
+        "weatherCode": 1,
+        "condition": "Partly cloudy",
+        "icon": "\u26c5",
+        "windSpeed": 8,
+        "windDirection": 220,
+        "windGusts": 14,
+        "cloudCover": 35,
+        "visibility": 16093
+      },
+      {
+        "time": "2026-10-17T12:57:58.356277+00:00",
+        "temperature": 63,
+        "dewPoint": 50,
+        "feelsLike": 70,
+        "precipProbability": 6,
+        "precipitation": 0,
+        "weatherCode": 1,
+        "condition": "Partly cloudy",
+        "icon": "\u26c5",
+        "windSpeed": 8,
+        "windDirection": 220,
+        "windGusts": 14,
+        "cloudCover": 35,
+        "visibility": 16093
+      },
+      {
+        "time": "2026-10-17T13:57:58.356277+00:00",
+        "temperature": 63,
+        "dewPoint": 50,
+        "feelsLike": 70,
+        "precipProbability": 0,
+        "precipitation": 0,
+        "weatherCode": 1,
+        "condition": "Partly cloudy",
+        "icon": "\u26c5",
+        "windSpeed": 8,
+        "windDirection": 220,
+        "windGusts": 14,
+        "cloudCover": 35,
+        "visibility": 16093
+      },
+      {
+        "time": "2026-10-17T14:57:58.356277+00:00",
+        "temperature": 63,
+        "dewPoint": 50,
+        "feelsLike": 70,
+        "precipProbability": 0,
+        "precipitation": 0,
+        "weatherCode": 1,
+        "condition": "Partly cloudy",
+        "icon": "\u26c5",
+        "windSpeed": 8,
+        "windDirection": 220,
+        "windGusts": 14,
+        "cloudCover": 35,
+        "visibility": 16093
+      },
+      {
+        "time": "2026-10-17T15:57:58.356277+00:00",
+        "temperature": 64,
+        "dewPoint": 50,
+        "feelsLike": 70,
+        "precipProbability": 0,
+        "precipitation": 0,
+        "weatherCode": 1,
+        "condition": "Partly cloudy",
+        "icon": "\u26c5",
+        "windSpeed": 8,
+        "windDirection": 220,
+        "windGusts": 14,
+        "cloudCover": 35,
+        "visibility": 16093
+      },
+      {
+        "time": "2026-10-17T16:57:58.356277+00:00",
+        "temperature": 65,
+        "dewPoint": 50,
+        "feelsLike": 70,
+        "precipProbability": 0,
+        "precipitation": 0,
+        "weatherCode": 1,
+        "condition": "Partly cloudy",
+        "icon": "\u26c5",
+        "windSpeed": 8,
+        "windDirection": 220,
+        "windGusts": 14,
+        "cloudCover": 35,
+        "visibility": 16093
+      },
+      {
+        "time": "2026-10-17T17:57:58.356277+00:00",
+        "temperature": 66,
+        "dewPoint": 50,
+        "feelsLike": 70,
+        "precipProbability": 0,
+        "precipitation": 0,
+        "weatherCode": 1,
+        "condition": "Partly cloudy",
+        "icon": "\u26c5",
+        "windSpeed": 8,
+        "windDirection": 220,
+        "windGusts": 14,
+        "cloudCover": 35,
+        "visibility": 16093
+      },
+      {
+        "time": "2026-10-17T18:57:58.356277+00:00",
+        "temperature": 67,
+        "dewPoint": 50,
+        "feelsLike": 70,
+        "precipProbability": 0,
+        "precipitation": 0,
+        "weatherCode": 1,
+        "condition": "Partly cloudy",
+        "icon": "\u26c5",
+        "windSpeed": 8,
+        "windDirection": 220,
+        "windGusts": 14,
+        "cloudCover": 35,
+        "visibility": 16093
+      },
+      {
+        "time": "2026-10-17T19:57:58.356277+00:00",
+        "temperature": 69,
+        "dewPoint": 50,
+        "feelsLike": 70,
+        "precipProbability": 0,
+        "precipitation": 0,
+        "weatherCode": 1,
+        "condition": "Partly cloudy",
+        "icon": "\u26c5",
+        "windSpeed": 8,
+        "windDirection": 220,
+        "windGusts": 14,
+        "cloudCover": 35,
+        "visibility": 16093
+      },
+      {
+        "time": "2026-10-17T20:57:58.356277+00:00",
+        "temperature": 70,
+        "dewPoint": 50,
+        "feelsLike": 70,
+        "precipProbability": 0,
+        "precipitation": 0,
+        "weatherCode": 1,
+        "condition": "Partly cloudy",
+        "icon": "\u26c5",
+        "windSpeed": 8,
+        "windDirection": 220,
+        "windGusts": 14,
+        "cloudCover": 35,
+        "visibility": 16093
+      },
+      {
+        "time": "2026-10-17T21:57:58.356277+00:00",
+        "temperature": 72,
+        "dewPoint": 50,
+        "feelsLike": 70,
+        "precipProbability": 0,
+        "precipitation": 0,
+        "weatherCode": 1,
+        "condition": "Partly cloudy",
+        "icon": "\u26c5",
+        "windSpeed": 8,
+        "windDirection": 220,
+        "windGusts": 14,
+        "cloudCover": 35,
+        "visibility": 16093
+      },
+      {
+        "time": "2026-10-17T22:57:58.356277+00:00",
+        "temperature": 73,
+        "dewPoint": 50,
+        "feelsLike": 70,
+        "precipProbability": 0,
+        "precipitation": 0,
+        "weatherCode": 1,
+        "condition": "Partly cloudy",
+        "icon": "\u26c5",
+        "windSpeed": 8,
+        "windDirection": 220,
+        "windGusts": 14,
+        "cloudCover": 35,
+        "visibility": 16093
+      },
+      {
+        "time": "2026-10-17T23:57:58.356277+00:00",
+        "temperature": 74,
+        "dewPoint": 50,
+        "feelsLike": 70,
+        "precipProbability": 0,
+        "precipitation": 0,
+        "weatherCode": 1,
+        "condition": "Partly cloudy",
+        "icon": "\u26c5",
+        "windSpeed": 8,
+        "windDirection": 220,
+        "windGusts": 14,
+        "cloudCover": 35,
+        "visibility": 16093
+      },
+      {
+        "time": "2026-10-18T00:57:58.356277+00:00",
+        "temperature": 75,
+        "dewPoint": 50,
+        "feelsLike": 70,
+        "precipProbability": 0,
+        "precipitation": 0,
+        "weatherCode": 1,
+        "condition": "Partly cloudy",
+        "icon": "\u26c5",
+        "windSpeed": 8,
+        "windDirection": 220,
+        "windGusts": 14,
+        "cloudCover": 35,
+        "visibility": 16093
+      },
+      {
+        "time": "2026-10-18T01:57:58.356277+00:00",
+        "temperature": 75,
+        "dewPoint": 50,
+        "feelsLike": 70,
+        "precipProbability": 0,
+        "precipitation": 0,
+        "weatherCode": 1,
+        "condition": "Partly cloudy",
+        "icon": "\u26c5",
+        "windSpeed": 8,
+        "windDirection": 220,
+        "windGusts": 14,
+        "cloudCover": 35,
+        "visibility": 16093
+      },
+      {
+        "time": "2026-10-18T02:57:58.356277+00:00",
+        "temperature": 75,
+        "dewPoint": 50,
+        "feelsLike": 70,
+        "precipProbability": 0,
+        "precipitation": 0,
+        "weatherCode": 1,
+        "condition": "Partly cloudy",
+        "icon": "\u26c5",
+        "windSpeed": 8,
+        "windDirection": 220,
+        "windGusts": 14,
+        "cloudCover": 35,
+        "visibility": 16093
+      },
+      {
+        "time": "2026-10-18T03:57:58.356277+00:00",
+        "temperature": 75,
+        "dewPoint": 50,
+        "feelsLike": 70,
+        "precipProbability": 0,
+        "precipitation": 0,
+        "weatherCode": 1,
+        "condition": "Partly cloudy",
+        "icon": "\u26c5",
+        "windSpeed": 8,
+        "windDirection": 220,
+        "windGusts": 14,
+        "cloudCover": 35,
+        "visibility": 16093
+      },
+      {
+        "time": "2026-10-18T04:57:58.356277+00:00",
+        "temperature": 74,
+        "dewPoint": 50,
+        "feelsLike": 70,
+        "precipProbability": 0,
+        "precipitation": 0,
+        "weatherCode": 1,
+        "condition": "Partly cloudy",
+        "icon": "\u26c5",
+        "windSpeed": 8,
+        "windDirection": 220,
+        "windGusts": 14,
+        "cloudCover": 35,
+        "visibility": 16093
+      },
+      {
+        "time": "2026-10-18T05:57:58.356277+00:00",
+        "temperature": 73,
+        "dewPoint": 50,
+        "feelsLike": 70,
+        "precipProbability": 0,
+        "precipitation": 0,
+        "weatherCode": 1,
+        "condition": "Partly cloudy",
+        "icon": "\u26c5",
+        "windSpeed": 8,
+        "windDirection": 220,
+        "windGusts": 14,
+        "cloudCover": 35,
+        "visibility": 16093
+      },
+      {
+        "time": "2026-10-18T06:57:58.356277+00:00",
+        "temperature": 71,
+        "dewPoint": 50,
+        "feelsLike": 70,
+        "precipProbability": 0,
+        "precipitation": 0,
+        "weatherCode": 1,
+        "condition": "Partly cloudy",
+        "icon": "\u26c5",
+        "windSpeed": 8,
+        "windDirection": 220,
+        "windGusts": 14,
+        "cloudCover": 35,
+        "visibility": 16093
+      },
+      {
+        "time": "2026-10-18T07:57:58.356277+00:00",
+        "temperature": 70,
+        "dewPoint": 50,
+        "feelsLike": 70,
+        "precipProbability": 0,
+        "precipitation": 0,
+        "weatherCode": 1,
+        "condition": "Partly cloudy",
+        "icon": "\u26c5",
+        "windSpeed": 8,
+        "windDirection": 220,
+        "windGusts": 14,
+        "cloudCover": 35,
+        "visibility": 16093
+      },
+      {
+        "time": "2026-10-18T08:57:58.356277+00:00",
+        "temperature": 69,
+        "dewPoint": 50,
+        "feelsLike": 70,
+        "precipProbability": 2,
+        "precipitation": 0,
+        "weatherCode": 1,
+        "condition": "Partly cloudy",
+        "icon": "\u26c5",
+        "windSpeed": 8,
+        "windDirection": 220,
+        "windGusts": 14,
+        "cloudCover": 35,
+        "visibility": 16093
+      },
+      {
+        "time": "2026-10-18T09:57:58.356277+00:00",
+        "temperature": 67,
+        "dewPoint": 50,
+        "feelsLike": 70,
+        "precipProbability": 9,
+        "precipitation": 0,
+        "weatherCode": 1,
+        "condition": "Partly cloudy",
+        "icon": "\u26c5",
+        "windSpeed": 8,
+        "windDirection": 220,
+        "windGusts": 14,
+        "cloudCover": 35,
+        "visibility": 16093
+      },
+      {
+        "time": "2026-10-18T10:57:58.356277+00:00",
+        "temperature": 66,
+        "dewPoint": 50,
+        "feelsLike": 70,
+        "precipProbability": 15,
+        "precipitation": 0,
+        "weatherCode": 1,
+        "condition": "Partly cloudy",
+        "icon": "\u26c5",
+        "windSpeed": 8,
+        "windDirection": 220,
+        "windGusts": 14,
+        "cloudCover": 35,
+        "visibility": 16093
+      },
+      {
+        "time": "2026-10-18T11:57:58.356277+00:00",
+        "temperature": 65,
+        "dewPoint": 50,
+        "feelsLike": 70,
+        "precipProbability": 21,
+        "precipitation": 0,
+        "weatherCode": 1,
+        "condition": "Partly cloudy",
+        "icon": "\u26c5",
+        "windSpeed": 8,
+        "windDirection": 220,
+        "windGusts": 14,
+        "cloudCover": 35,
+        "visibility": 16093
+      },
+      {
+        "time": "2026-10-18T12:57:58.356277+00:00",
+        "temperature": 64,
+        "dewPoint": 50,
+        "feelsLike": 70,
+        "precipProbability": 26,
+        "precipitation": 0,
+        "weatherCode": 1,
+        "condition": "Partly cloudy",
+        "icon": "\u26c5",
+        "windSpeed": 8,
+        "windDirection": 220,
+        "windGusts": 14,
+        "cloudCover": 35,
+        "visibility": 16093
+      },
+      {
+        "time": "2026-10-18T13:57:58.356277+00:00",
+        "temperature": 63,
+        "dewPoint": 50,
+        "feelsLike": 70,
+        "precipProbability": 31,
+        "precipitation": 0,
+        "weatherCode": 1,
+        "condition": "Partly cloudy",
+        "icon": "\u26c5",
+        "windSpeed": 8,
+        "windDirection": 220,
+        "windGusts": 14,
+        "cloudCover": 35,
+        "visibility": 16093
+      },
+      {
+        "time": "2026-10-18T14:57:58.356277+00:00",
+        "temperature": 63,
+        "dewPoint": 50,
+        "feelsLike": 70,
+        "precipProbability": 35,
+        "precipitation": 0,
+        "weatherCode": 1,
+        "condition": "Partly cloudy",
+        "icon": "\u26c5",
+        "windSpeed": 8,
+        "windDirection": 220,
+        "windGusts": 14,
+        "cloudCover": 35,
+        "visibility": 16093
+      },
+      {
+        "time": "2026-10-18T15:57:58.356277+00:00",
+        "temperature": 63,
+        "dewPoint": 50,
+        "feelsLike": 70,
+        "precipProbability": 38,
+        "precipitation": 0,
+        "weatherCode": 1,
+        "condition": "Partly cloudy",
+        "icon": "\u26c5",
+        "windSpeed": 8,
+        "windDirection": 220,
+        "windGusts": 14,
+        "cloudCover": 35,
+        "visibility": 16093
+      },
+      {
+        "time": "2026-10-18T16:57:58.356277+00:00",
+        "temperature": 64,
+        "dewPoint": 50,
+        "feelsLike": 70,
+        "precipProbability": 39,
+        "precipitation": 0,
+        "weatherCode": 1,
+        "condition": "Partly cloudy",
+        "icon": "\u26c5",
+        "windSpeed": 8,
+        "windDirection": 220,
+        "windGusts": 14,
+        "cloudCover": 35,
+        "visibility": 16093
+      },
+      {
+        "time": "2026-10-18T17:57:58.356277+00:00",
+        "temperature": 65,
+        "dewPoint": 50,
+        "feelsLike": 70,
+        "precipProbability": 40,
+        "precipitation": 0,
+        "weatherCode": 1,
+        "condition": "Partly cloudy",
+        "icon": "\u26c5",
+        "windSpeed": 8,
+        "windDirection": 220,
+        "windGusts": 14,
+        "cloudCover": 35,
+        "visibility": 16093
+      }
+    ],
+    "daily": [
+      {
+        "date": "2026-10-16",
+        "tempMax": 72,
+        "tempMin": 52,
+        "feelsMax": 72,
+        "feelsMin": 52,
+        "precipSum": 0,
+        "precipProbability": 0,
+        "windMax": 10,
+        "windGusts": 15,
+        "windDir": 220,
+        "sunrise": "2026-10-16T18:57:58.356277+00:00",
+        "sunset": "2026-10-16T18:57:58.356277+00:00",
+        "uvIndex": 3,
+        "weatherCode": 1,
+        "condition": "Partly cloudy",
+        "icon": "\u26c5"
+      },
+      {
+        "date": "2026-10-17",
+        "tempMax": 71,
+        "tempMin": 51,
+        "feelsMax": 72,
+        "feelsMin": 52,
+        "precipSum": 0,
+        "precipProbability": 8,
+        "windMax": 10,
+        "windGusts": 15,
+        "windDir": 220,
+        "sunrise": "2026-10-16T18:57:58.356277+00:00",
+        "sunset": "2026-10-16T18:57:58.356277+00:00",
+        "uvIndex": 3,
+        "weatherCode": 1,
+        "condition": "Partly cloudy",
+        "icon": "\u26c5"
+      },
+      {
+        "date": "2026-10-18",
+        "tempMax": 70,
+        "tempMin": 50,
+        "feelsMax": 72,
+        "feelsMin": 52,
+        "precipSum": 0,
+        "precipProbability": 16,
+        "windMax": 10,
+        "windGusts": 15,
+        "windDir": 220,
+        "sunrise": "2026-10-16T18:57:58.356277+00:00",
+        "sunset": "2026-10-16T18:57:58.356277+00:00",
+        "uvIndex": 3,
+        "weatherCode": 1,
+        "condition": "Partly cloudy",
+        "icon": "\u26c5"
+      },
+      {
+        "date": "2026-10-19",
+        "tempMax": 69,
+        "tempMin": 49,
+        "feelsMax": 72,
+        "feelsMin": 52,
+        "precipSum": 0,
+        "precipProbability": 24,
+        "windMax": 10,
+        "windGusts": 15,
+        "windDir": 220,
+        "sunrise": "2026-10-16T18:57:58.356277+00:00",
+        "sunset": "2026-10-16T18:57:58.356277+00:00",
+        "uvIndex": 3,
+        "weatherCode": 1,
+        "condition": "Partly cloudy",
+        "icon": "\u26c5"
+      },
+      {
+        "date": "2026-10-20",
+        "tempMax": 68,
+        "tempMin": 48,
+        "feelsMax": 72,
+        "feelsMin": 52,
+        "precipSum": 0,
+        "precipProbability": 32,
+        "windMax": 10,
+        "windGusts": 15,
+        "windDir": 220,
+        "sunrise": "2026-10-16T18:57:58.356277+00:00",
+        "sunset": "2026-10-16T18:57:58.356277+00:00",
+        "uvIndex": 3,
+        "weatherCode": 1,
+        "condition": "Partly cloudy",
+        "icon": "\u26c5"
+      },
+      {
+        "date": "2026-10-21",
+        "tempMax": 67,
+        "tempMin": 47,
+        "feelsMax": 72,
+        "feelsMin": 52,
+        "precipSum": 0,
+        "precipProbability": 40,
+        "windMax": 10,
+        "windGusts": 15,
+        "windDir": 220,
+        "sunrise": "2026-10-16T18:57:58.356277+00:00",
+        "sunset": "2026-10-16T18:57:58.356277+00:00",
+        "uvIndex": 3,
+        "weatherCode": 1,
+        "condition": "Partly cloudy",
+        "icon": "\u26c5"
+      },
+      {
+        "date": "2026-10-22",
+        "tempMax": 66,
+        "tempMin": 46,
+        "feelsMax": 72,
+        "feelsMin": 52,
+        "precipSum": 0,
+        "precipProbability": 48,
+        "windMax": 10,
+        "windGusts": 15,
+        "windDir": 220,
+        "sunrise": "2026-10-16T18:57:58.356277+00:00",
+        "sunset": "2026-10-16T18:57:58.356277+00:00",
+        "uvIndex": 3,
+        "weatherCode": 1,
+        "condition": "Partly cloudy",
+        "icon": "\u26c5"
+      }
+    ],
+    "timezone": "America/New_York"
+  },
+  "/nws/alerts": {
+    "type": "FeatureCollection",
+    "features": [
+      {
+        "id": "national-only",
+        "type": "Feature",
+        "geometry": {
+          "type": "Polygon",
+          "coordinates": [
+            [
+              [
+                -84.6,
+                39.4
+              ],
+              [
+                -84.4,
+                39.4
+              ],
+              [
+                -84.4,
+                39.6
+              ],
+              [
+                -84.6,
+                39.6
+              ],
+              [
+                -84.6,
+                39.4
+              ]
+            ]
+          ]
+        },
+        "properties": {
+          "id": "national-only",
+          "event": "Flood Watch",
+          "severity": "Moderate",
+          "urgency": "Expected",
+          "certainty": "Possible",
+          "headline": "Flood Watch for the review area",
+          "description": "Synthetic weather data for interface testing.",
+          "instruction": "Review fixture only.",
+          "areaDesc": "Review County",
+          "effective": "2026-10-16T18:57:58.356277+00:00",
+          "expires": "2026-10-16T20:57:58.356277+00:00",
+          "ends": "2026-10-16T20:57:58.356277+00:00",
+          "sent": "2026-10-16T18:57:58.356277+00:00",
+          "onset": "2026-10-16T18:57:58.356277+00:00",
+          "status": "Test",
+          "messageType": "Alert",
+          "senderName": "Review fixture"
+        }
+      }
+    ],
+    "updated": "2026-10-16T18:57:58.356277+00:00"
+  },
+  "/nws/alerts?local=true": {
+    "type": "FeatureCollection",
+    "features": [],
+    "updated": "2026-10-16T18:57:58.356277+00:00"
+  },
+  "/radar/timestamps": {
+    "host": "http://localhost:8001",
+    "generated": 1792177078,
+    "radar": {
+      "past": [
+        {
+          "time": 1792175278,
+          "path": "/tiles"
+        },
+        {
+          "time": 1792175878,
+          "path": "/tiles"
+        },
+        {
+          "time": 1792176478,
+          "path": "/tiles"
+        },
+        {
+          "time": 1792177078,
+          "path": "/tiles"
+        }
+      ],
+      "nowcast": []
+    },
+    "satellite": {
+      "infrared": []
+    }
+  },
+  "/timemachine/snapshots?hours=6": {
+    "ready": true,
+    "snapshots": [
+      {
+        "ts": 1792173478,
+        "alert_count": 1,
+        "lsr_count": 0,
+        "tornado_count": 1,
+        "hail_count": 0,
+        "wind_count": 0
+      },
+      {
+        "ts": 1792174078,
+        "alert_count": 1,
+        "lsr_count": 0,
+        "tornado_count": 1,
+        "hail_count": 0,
+        "wind_count": 0
+      },
+      {
+        "ts": 1792174678,
+        "alert_count": 1,
+        "lsr_count": 0,
+        "tornado_count": 1,
+        "hail_count": 0,
+        "wind_count": 0
+      },
+      {
+        "ts": 1792175278,
+        "alert_count": 1,
+        "lsr_count": 0,
+        "tornado_count": 1,
+        "hail_count": 0,
+        "wind_count": 0
+      },
+      {
+        "ts": 1792175878,
+        "alert_count": 1,
+        "lsr_count": 0,
+        "tornado_count": 1,
+        "hail_count": 0,
+        "wind_count": 0
+      },
+      {
+        "ts": 1792176478,
+        "alert_count": 1,
+        "lsr_count": 0,
+        "tornado_count": 1,
+        "hail_count": 0,
+        "wind_count": 0
+      },
+      {
+        "ts": 1792177078,
+        "alert_count": 1,
+        "lsr_count": 0,
+        "tornado_count": 1,
+        "hail_count": 0,
+        "wind_count": 0
+      }
+    ]
+  },
+  "/timemachine/at": {
+    "ts": 1792173478,
+    "snapshot_ts": 1792173478,
+    "lat": 39.5,
+    "lon": -84.5,
+    "alerts": {
+      "features": [
+        {
+          "id": "archive-only",
+          "type": "Feature",
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+              [
+                [
+                  -84.6,
+                  39.4
+                ],
+                [
+                  -84.4,
+                  39.4
+                ],
+                [
+                  -84.4,
+                  39.6
+                ],
+                [
+                  -84.6,
+                  39.6
+                ],
+                [
+                  -84.6,
+                  39.4
+                ]
+              ]
+            ]
+          },
+          "properties": {
+            "id": "archive-only",
+            "event": "Tornado Warning",
+            "severity": "Severe",
+            "urgency": "Expected",
+            "certainty": "Possible",
+            "headline": "Tornado Warning for the review area",
+            "description": "Synthetic weather data for interface testing.",
+            "instruction": "Review fixture only.",
+            "areaDesc": "Review County",
+            "effective": "2026-10-16T18:57:58.356277+00:00",
+            "expires": "2026-10-16T20:57:58.356277+00:00",
+            "ends": "2026-10-16T20:57:58.356277+00:00",
+            "sent": "2026-10-16T18:57:58.356277+00:00",
+            "onset": "2026-10-16T18:57:58.356277+00:00",
+            "status": "Test",
+            "messageType": "Alert",
+            "senderName": "Review fixture"
+          }
+        }
+      ]
+    },
+    "lsrs": {
+      "type": "FeatureCollection",
+      "features": [],
+      "updated": "2026-10-16T18:57:58.356277+00:00"
+    }
+  },
+  "/health/upstreams": {
+    "status": "ok",
+    "sources": {
+      "nws_alerts": {
+        "ok": true,
+        "status": 200
+      },
+      "spc_outlook": {
+        "ok": true,
+        "status": 200
+      },
+      "spc_reports": {
+        "ok": true,
+        "status": 200
+      },
+      "rainviewer": {
+        "ok": true,
+        "status": 200
+      },
+      "open_meteo": {
+        "ok": true,
+        "status": 200
+      },
+      "nhc": {
+        "ok": true,
+        "status": 200
+      },
+      "aviation_metar": {
+        "ok": true,
+        "status": 200
+      }
+    }
+  },
+  "/webpush/key": {
+    "public_key": "",
+    "ready": false,
+    "have_pywebpush": false
+  },
+  "/webpush/status": {
+    "ready": false,
+    "subscribers": 0
+  },
+  "/briefing/status": {
+    "ok": false
+  },
+  "/aviation/tafs": {
+    "tafs": [],
+    "count": 0
+  },
+  "/aviation/pireps": {
+    "pireps": [],
+    "count": 0
+  },
+  "/aviation/sigmets": {
+    "sigmets": [],
+    "count": 0
+  },
+  "/aviation/airmets": {
+    "airmets": [],
+    "count": 0
+  },
+  "/marine/buoys": {
+    "buoys": []
+  },
+  "/marine/tides": {
+    "tides": []
+  },
+  "/usgs/gauges": {
+    "state": "OH",
+    "gauges": [
+      {
+        "siteCode": "03245500",
+        "siteName": "Little Miami River at Milford (fixture)",
+        "lat": 39.17,
+        "lon": -84.3,
+        "height": 16,
+        "unit": "ft",
+        "time": "2026-10-16T18:57:58.356277+00:00",
+        "qualifiers": [],
+        "thresholds": {
+          "action": 13,
+          "minor": 17,
+          "moderate": 22,
+          "major": 27,
+          "source": "NWS NWPS",
+          "unit": "ft"
+        }
+      }
+    ]
+  },
+  "/nexrad/sites": {
+    "sites": [
+      {
+        "id": "KILN",
+        "name": "Wilmington",
+        "lat": 39.4,
+        "lon": -83.8,
+        "distance_km": 50
+      }
+    ],
+    "products": [
+      {
+        "code": "N0Q",
+        "label": "Reflectivity",
+        "group": "Radar"
+      }
+    ]
+  },
+  "/spc/reports": {
+    "tornado": [],
+    "hail": [],
+    "wind": [],
+    "total": 0,
+    "generated": "2026-10-16T18:57:58.356277+00:00"
+  },
+  "/aprs/stations": {
+    "stations": [],
+    "hours": 2
+  },
+  "/nhc/active": {
+    "storms": [],
+    "fetched": "2026-10-16T18:57:58.356277+00:00"
+  },
+  "/spc/watches": {
+    "watches": [],
+    "count": 0
+  },
+  "/spc/mesoscale/json": {
+    "items": [],
+    "count": 0
+  },
+  "/lsr/recent": {
+    "geojson": {
+      "type": "FeatureCollection",
+      "features": [],
+      "updated": "2026-10-16T18:57:58.356277+00:00"
+    },
+    "items": [],
+    "by_category": {},
+    "count": 0,
+    "hours": 2
+  },
+  "/briefing/prioritize": {
+    "order": [],
+    "reasoning": "",
+    "source": "fallback",
+    "model": ""
+  }
+}

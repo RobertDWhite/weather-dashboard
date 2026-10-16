@@ -37,6 +37,7 @@ export default function CurrentConditionsPanel({ data }: Props) {
   return (
     <div className="card">
       <div className="card-title">⛅ Current Conditions</div>
+      <p className="observation-time">Observed {/Z$|[+-]\d{2}:\d{2}$/.test(data.time) ? new Date(data.time).toLocaleString([], { timeZone: data.timezone, month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : data.time.replace('T', ' ')} · {data.timezone}</p>
 
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 12 }}>
         <TempGauge value={data.temperature} />

@@ -1,15 +1,17 @@
 import { useEffect, useState } from 'react'
+import type { FeedStatus } from '../hooks/useFeed'
 import { format } from 'date-fns'
 
 interface Props {
   location: string
-  lastUpdate: Date
+  lastUpdate: Date | null
+  alertStatus: FeedStatus
   alertCount: number
   onAlertsClick?: () => void
   compact?: boolean
 }
 
-export default function WeatherHeader({ location, lastUpdate, alertCount, onAlertsClick, compact }: Props) {
+export default function WeatherHeader({ location, lastUpdate, alertCount, alertStatus, onAlertsClick, compact }: Props) {
   const [now, setNow] = useState(new Date())
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000)
@@ -18,6 +20,7 @@ export default function WeatherHeader({ location, lastUpdate, alertCount, onAler
 
   return (
     <div
+      className="weather-header"
       style={{
         background: 'linear-gradient(90deg, #060b14 0%, #0d1625 40%, #060b14 100%)',
         borderBottom: '1px solid var(--border-bright)',
@@ -44,7 +47,7 @@ export default function WeatherHeader({ location, lastUpdate, alertCount, onAler
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: compact ? 8 : 24, fontSize: 12 }}>
-        {alertCount > 0 ? (
+        {alertStatus !== 'success' ? <span role="status" style={{ color: 'var(--warn-yellow)' }}>{alertStatus === 'loading' ? 'Checking alerts…' : alertStatus === 'stale' ? 'Alerts stale' : 'Alerts unavailable'}</span> : alertCount > 0 ? (
           <button
             onClick={onAlertsClick}
             className="animate-pulse-red"
@@ -68,14 +71,14 @@ export default function WeatherHeader({ location, lastUpdate, alertCount, onAler
             ⚠ {alertCount}{compact ? '' : ` ACTIVE ALERT${alertCount !== 1 ? 'S' : ''}`} ↗
           </button>
         ) : (
-          <div style={{ fontSize: 11, color: 'var(--warn-green)', display: 'flex', alignItems: 'center', gap: 5 }}>
+          <div style={{ fontSize: 12, color: 'var(--warn-green)', display: 'flex', alignItems: 'center', gap: 5 }}>
             ✓ {compact ? 'Clear' : 'No active alerts'}
           </div>
         )}
         {!compact && (
           <>
             <div style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
-              Updated {format(lastUpdate, 'HH:mm:ss')}
+              {lastUpdate ? `Alerts checked ${format(lastUpdate, 'HH:mm:ss')}` : 'No successful alert update'}
             </div>
             <div style={{ color: 'var(--accent-cyan)', fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: 14 }}>
               {now.toISOString().slice(11, 19)} UTC{' '}

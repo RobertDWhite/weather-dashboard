@@ -1,5 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
-import type { NexradSite, NexradProduct } from '../types'
+import { useEffect, useMemo } from 'react'
+import { useFeed } from '../hooks/useFeed'
+import { FeedStatus } from './FeedPanel'
+import type { NexradProduct } from '../types'
 import { fetchNexradSites } from '../api'
 
 interface Props {
@@ -19,32 +21,17 @@ export default function NexradPicker({
   enabled, setEnabled, site, setSite, product, setProduct,
   homeLat, homeLon, onSitePicked,
 }: Props) {
-  const [sites, setSites] = useState<NexradSite[]>([])
-  const [products, setProducts] = useState<NexradProduct[]>([])
-
+  const feed = useFeed(`nexrad-sites:${homeLat}:${homeLon}`, s => fetchNexradSites(homeLat, homeLon, s), { interval: 3600_000 })
+  const sites = feed.data?.sites ?? []
+  const products = feed.data?.products ?? []
   useEffect(() => {
-    let cancelled = false
-    fetchNexradSites(homeLat, homeLon)
-      .then((r) => {
-        if (cancelled) return
-        setSites(r.sites)
-        setProducts(r.products)
-        // Auto-pick the closest site if user hasn't chosen one. Also report
-        // the coords back to the parent so it can bound the tile layer.
-        if (!site && r.sites.length) {
-          setSite(r.sites[0].id)
-          if (onSitePicked) onSitePicked(r.sites[0].lat, r.sites[0].lon)
-        } else if (site && onSitePicked) {
-          // Already-chosen site reload — re-emit coords from the fresh list
-          const cur = r.sites.find((s) => s.id === site)
-          if (cur) onSitePicked(cur.lat, cur.lon)
-        }
-      })
-      .catch(() => {})
-    return () => { cancelled = true }
-  // we don't want to re-fetch when site changes — only on home move
+    const picked = sites.find(s => s.id === site) ?? sites[0]
+    if (!picked) return
+    if (!site) setSite(picked.id)
+    onSitePicked?.(picked.lat, picked.lon)
+  // Report coordinates once per catalog load; user picks are handled below.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [homeLat, homeLon])
+  }, [feed.data])
 
   const groups = useMemo(() => {
     const g: Record<string, NexradProduct[]> = {}
@@ -71,6 +58,7 @@ export default function NexradPicker({
         gap: 5,
       }}
     >
+      <FeedStatus feed={feed} name="NEXRAD sites" />
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         <button
           onClick={() => setEnabled(!enabled)}
@@ -80,7 +68,7 @@ export default function NexradPicker({
             border: '1px solid var(--accent-cyan)',
             padding: '3px 9px',
             borderRadius: 3,
-            fontSize: 10,
+            fontSize: 12,
             fontWeight: 800,
             letterSpacing: 0.5,
             textTransform: 'uppercase',
@@ -95,6 +83,7 @@ export default function NexradPicker({
       {enabled && (
         <>
           <select
+            aria-label="Radar station"
             value={site}
             onChange={(e) => {
               setSite(e.target.value)
@@ -105,7 +94,7 @@ export default function NexradPicker({
               background: 'var(--bg-card)',
               border: '1px solid var(--border)',
               color: 'var(--text-primary)',
-              fontSize: 11,
+              fontSize: 12,
               padding: '3px 6px',
               borderRadius: 3,
             }}
@@ -117,13 +106,14 @@ export default function NexradPicker({
             ))}
           </select>
           <select
+            aria-label="Radar product"
             value={product}
             onChange={(e) => setProduct(e.target.value)}
             style={{
               background: 'var(--bg-card)',
               border: '1px solid var(--border)',
               color: 'var(--text-primary)',
-              fontSize: 11,
+              fontSize: 12,
               padding: '3px 6px',
               borderRadius: 3,
             }}
@@ -137,7 +127,7 @@ export default function NexradPicker({
             ))}
           </select>
           {selectedSite && (
-            <div style={{ fontSize: 9, color: 'var(--text-muted)', textAlign: 'right' }}>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'right' }}>
               Range: ~250 km · NOAA GeoServer · refresh 2m
             </div>
           )}

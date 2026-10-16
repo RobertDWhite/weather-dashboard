@@ -31,7 +31,7 @@ export default function SpcOutlook() {
   // browser pulls a fresh outlook GIF after SPC issues an update.
   const [bust, setBust] = useState<number>(() => Date.now())
 
-  useEffect(() => { setImgError(false) }, [tab])
+  useEffect(() => { setImgError(false) }, [tab, bust])
 
   useEffect(() => {
     const t = setInterval(() => setBust(Date.now()), 10 * 60_000)
@@ -50,7 +50,7 @@ export default function SpcOutlook() {
               key={d}
               onClick={() => setTab(d)}
               style={{
-                padding: '1px 7px', borderRadius: 4, fontSize: 10, fontWeight: 700,
+                padding: '1px 7px', borderRadius: 4, fontSize: 12, fontWeight: 700,
                 background: tab === d ? 'var(--accent-blue)' : 'var(--bg-base)',
                 color: tab === d ? '#fff' : 'var(--text-muted)',
                 border: `1px solid ${tab === d ? 'var(--accent-blue)' : 'var(--border)'}`,
@@ -81,7 +81,7 @@ export default function SpcOutlook() {
             />
           </a>
         ) : (
-          <div style={{ padding: 16, textAlign: 'center', color: 'var(--text-muted)', fontSize: 11 }}>
+          <div style={{ padding: 16, textAlign: 'center', color: 'var(--text-muted)', fontSize: 12 }}>
             Outlook image unavailable
             <button
               onClick={() => { setImgError(false); setBust(Date.now()) }}
@@ -89,7 +89,7 @@ export default function SpcOutlook() {
                 display: 'block', margin: '8px auto 0',
                 background: 'var(--bg-card)', border: '1px solid var(--border)',
                 color: 'var(--accent-cyan)', borderRadius: 3,
-                padding: '3px 10px', fontSize: 10, cursor: 'pointer',
+                padding: '3px 10px', fontSize: 12, cursor: 'pointer',
               }}
             >
               Retry
@@ -99,7 +99,7 @@ export default function SpcOutlook() {
 
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
           {SPC_LABELS.map(({ label, color, full }) => (
-            <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10 }}>
+            <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12 }}>
               <div style={{ width: 10, height: 10, background: color, borderRadius: 2, flexShrink: 0 }} />
               <span style={{ color: 'var(--text-muted)' }}>{full}</span>
             </div>
@@ -110,7 +110,7 @@ export default function SpcOutlook() {
           href="https://www.spc.noaa.gov/products/outlook/"
           target="_blank"
           rel="noopener noreferrer"
-          style={{ fontSize: 10, color: 'var(--accent-cyan)', textDecoration: 'none' }}
+          style={{ fontSize: 12, color: 'var(--accent-cyan)', textDecoration: 'none' }}
         >
           → Full SPC Outlook ↗
         </a>

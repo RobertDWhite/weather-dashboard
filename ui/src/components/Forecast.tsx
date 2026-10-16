@@ -41,14 +41,14 @@ export default function Forecast({ daily }: Props) {
                 {isToday ? 'Today' : format(date, 'EEE')}
               </div>
               <div style={{ fontSize: 15, textAlign: 'center' }}>{d.icon}</div>
-              <div style={{ color: 'var(--text-secondary)', fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <div style={{ color: 'var(--text-secondary)', fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {d.condition}
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 4 }}>
                 <span style={{ color: 'var(--warn-orange)', fontWeight: 700 }}>{Math.round(d.tempMax)}°</span>
                 <span style={{ color: 'var(--text-muted)' }}>{Math.round(d.tempMin)}°</span>
               </div>
-              <div style={{ color: precipColor, fontSize: 11, textAlign: 'right' }}>
+              <div style={{ color: precipColor, fontSize: 12, textAlign: 'right' }}>
                 {precipPct > 0 ? `${precipPct}%` : ''}
               </div>
             </div>

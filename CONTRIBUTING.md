@@ -17,7 +17,7 @@ npm install
 npm run dev
 ```
 
-The Vite dev server proxies `/api/*` to `localhost:8000`.
+The Vite dev server proxies `/api/*` to `localhost:8000`. Set `WX_API_URL` to override the API origin.
 
 ## What I'll merge
 
@@ -42,7 +42,24 @@ The Vite dev server proxies `/api/*` to `localhost:8000`.
 
 ## Testing
 
-There isn't a test suite yet. If you add one, please use pytest for the API and Vitest for the UI.
+Run these from the repository root:
+
+```bash
+npm --prefix ui test
+npm --prefix ui run build
+PYTHONPATH=api python -m pytest api/tests
+```
+
+Install the API requirements and `pytest` in your virtual environment first. UI tests cover independent feed failures, stale data, retries, optional requests, river classification, replay/live notification isolation, map shortcuts and embeds, and dialog keyboard behavior. Backend tests cover NOAA gauge metadata and partial archive failures. Network calls are mocked.
+
+For a reproducible visual review without upstream services, run these in separate terminals:
+
+```bash
+python3 scripts/serve_review_fixtures.py
+WX_API_URL=http://127.0.0.1:8001 npm --prefix ui run dev -- --host 127.0.0.1 --port 5174
+```
+
+Open `http://localhost:5174`. This serves **synthetic weather**, labelled “Review fixture,” with transparent radar tiles. It is only for local UI verification. Check Overview and Operations at phone and desktop widths, open the Layers drawer, switch maps with `A`/`R`, and scrub historical replay. Unimplemented fixture endpoints deliberately return 503 so missing data cannot look like clear weather.
 
 ## Reporting issues
 

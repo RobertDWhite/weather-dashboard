@@ -1,10 +1,11 @@
+import { useFeed } from '../hooks/useFeed'
+import { FeedStatus } from './FeedPanel'
 /** HRRR forecast loop — animated prediction of where convection will be over
  * the next 12 hours. Two products: composite reflectivity (default) and
  * near-surface smoke. Sourced via /hrrr/forecast and /hrrr/smoke.
  *
  * Plays as an autoplaying loop; user can scrub frame-by-frame. */
 import { useEffect, useState } from 'react'
-import type { HrrrForecastResponse } from '../types'
 import { fetchHrrrForecast, fetchHrrrSmoke } from '../api'
 
 const FRAME_MS = 600
@@ -12,27 +13,13 @@ type Field = 'refc' | 'smoke'
 
 export default function HrrrLoopPanel() {
   const [field, setField] = useState<Field>('refc')
-  const [data, setData] = useState<HrrrForecastResponse | null>(null)
+  const feed = useFeed(`hrrr:${field}`, s => field === 'refc' ? fetchHrrrForecast(12, s) : fetchHrrrSmoke(12, s), { interval: 1_800_000 })
+  const data = feed.data
   const [idx, setIdx] = useState(0)
-  const [playing, setPlaying] = useState(true)
-  const [loaded, setLoaded] = useState(false)
+  const [playing, setPlaying] = useState(false)
   const [imgError, setImgError] = useState(false)
 
-  useEffect(() => {
-    let cancelled = false
-    setLoaded(false)
-    setImgError(false)
-    setIdx(0)
-    const fn = field === 'refc' ? () => fetchHrrrForecast(12) : () => fetchHrrrSmoke(12)
-    fn()
-      .then((d) => { if (!cancelled) setData(d) })
-      .catch(() => {})
-      .finally(() => { if (!cancelled) setLoaded(true) })
-    const t = setInterval(() => {
-      fn().then((d) => { if (!cancelled) { setData(d); setIdx(0); setImgError(false) } }).catch(() => {})
-    }, 30 * 60_000)
-    return () => { cancelled = true; clearInterval(t) }
-  }, [field])
+  useEffect(() => { setIdx(0); setImgError(false) }, [field, feed.lastSuccess])
 
   useEffect(() => {
     if (!playing || !data?.frames?.length) return
@@ -40,15 +27,14 @@ export default function HrrrLoopPanel() {
     return () => clearInterval(t)
   }, [playing, data?.frames?.length])
 
-  if (!loaded) return null
-  // Hide entirely when no usable image source published — keeps the layout
-  // clean instead of displaying a permanent broken panel
-  if (!data?.frames?.length) return null
+  if (!data) return <FeedStatus feed={feed} name="HRRR forecast" />
+  if (!data.frames.length) return <p className="notice">No HRRR frames available.</p>
 
   const frame = data.frames[Math.min(idx, data.frames.length - 1)]
 
   return (
     <div className="card" style={{ display: 'flex', flexDirection: 'column' }}>
+      <FeedStatus feed={feed} name="HRRR forecast" />
       <div className="card-title">
         🔮 HRRR Forecast
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 4 }}>

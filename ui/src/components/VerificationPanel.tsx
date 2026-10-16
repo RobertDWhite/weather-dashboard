@@ -1,7 +1,7 @@
+import { useFeed } from '../hooks/useFeed'
+import { FeedStatus } from './FeedPanel'
 /** Alert verification — last 24h hit-rate + average lead time per category.
  * Useful retrospective view; quietly hides when there are no events to score. */
-import { useEffect, useState } from 'react'
-import type { VerificationResponse } from '../types'
 import { fetchVerification } from '../api'
 
 const BUCKET_LABELS: Record<string, { label: string; color: string }> = {
@@ -11,27 +11,15 @@ const BUCKET_LABELS: Record<string, { label: string; color: string }> = {
 }
 
 export default function VerificationPanel() {
-  const [data, setData] = useState<VerificationResponse | null>(null)
-
-  useEffect(() => {
-    let cancelled = false
-    const tick = async () => {
-      try {
-        const d = await fetchVerification()
-        if (!cancelled) setData(d)
-      } catch { /* */ }
-    }
-    tick()
-    const t = setInterval(tick, 5 * 60_000)
-    return () => { cancelled = true; clearInterval(t) }
-  }, [])
-
-  if (!data) return null
+  const feed = useFeed('verification', fetchVerification, { interval: 300_000 })
+  const data = feed.data
+  if (!data) return <FeedStatus feed={feed} name="Verification" />
   const totalEvents = Object.values(data.summary).reduce((s, b) => s + b.events, 0)
-  if (totalEvents === 0) return null
+  if (totalEvents === 0) return <><FeedStatus feed={feed} name="Verification" />{feed.status === 'success' && <p className="notice">No verification reports available.</p>}</>
 
   return (
     <div className="card">
+      <FeedStatus feed={feed} name="Verification" />
       <div className="card-title">🎯 NWS Verification (24h)</div>
       <div style={{ padding: 6, display: 'flex', flexDirection: 'column', gap: 4 }}>
         {(['tornado', 'severe', 'flood'] as const).map((cat) => {

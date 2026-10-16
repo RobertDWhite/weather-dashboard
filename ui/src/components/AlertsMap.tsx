@@ -9,6 +9,7 @@ import type {
 } from '../types'
 import { fetchZoneGeometries } from '../api'
 import CameraPanel from './CameraPanel'
+import MapViewport from './MapViewport'
 import HazardLayers from './HazardLayers'
 import NexradLayer from './NexradLayer'
 import RangeRings from './RangeRings'
@@ -229,17 +230,18 @@ export default function AlertsMap({
     })
 
   return (
-    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+    <div className="alerts-map-frame">
       <MapContainer
         center={[38, -97]}
         zoom={4}
         minZoom={3}
         maxZoom={14}
-        style={{ width: '100%', height: '100%' }}
+        style={{ width: '100%', flex: 1, minHeight: 0 }}
         zoomControl={true}
         attributionControl={true}
       >
         <MapRefCapture mapRef={mapRef} />
+        <MapViewport center={homeCenter} />
         <PopupCameraWirer onCamera={(lat, lon, label) => setCameraTarget({ lat, lon, label })} />
         <ScaleControl position="bottomright" imperial={true} metric={true} />
 
@@ -393,98 +395,14 @@ export default function AlertsMap({
         })}
       </MapContainer>
 
-      {/* Severity filter legend */}
-      <div
-        style={{
-          position: 'absolute',
-          top: 8,
-          left: 8,
-          zIndex: 1000,
-          background: 'rgba(6,11,20,0.9)',
-          border: '1px solid var(--border-bright)',
-          borderRadius: 7,
-          padding: '8px 10px',
-          backdropFilter: 'blur(4px)',
-          minWidth: 160,
-        }}
-      >
-        <div style={{ fontSize: 10, fontWeight: 800, color: 'var(--accent-cyan)', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 7 }}>
-          Alert Severity
-        </div>
-        {SEV_ORDER.filter((s) => counts[s]).map((sev) => {
-          const color = sevColor(sev)
-          const hidden = hiddenSev.has(sev)
-          return (
-            <button
-              key={sev}
-              onClick={() => toggleSev(sev)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 7,
-                width: '100%',
-                padding: '3px 0',
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                opacity: hidden ? 0.35 : 1,
-                transition: 'opacity 0.15s',
-              }}
-            >
-              <span
-                style={{
-                  display: 'inline-block',
-                  width: 10,
-                  height: 10,
-                  borderRadius: 2,
-                  background: hidden ? 'transparent' : color,
-                  border: `2px solid ${color}`,
-                  flexShrink: 0,
-                  transition: 'background 0.15s',
-                }}
-              />
-              <span style={{ fontSize: 11, color: hidden ? 'var(--text-muted)' : 'var(--text-secondary)', flex: 1, textAlign: 'left' }}>
-                {sev}
-              </span>
-              <span style={{ fontSize: 11, fontWeight: 700, color: hidden ? 'var(--text-muted)' : color, fontFamily: 'var(--font-mono)', minWidth: 20, textAlign: 'right' }}>
-                {counts[sev]}
-              </span>
-            </button>
-          )
-        })}
-        <div style={{ marginTop: 6, paddingTop: 6, borderTop: '1px solid var(--border)', fontSize: 10, color: 'var(--text-muted)', display: 'flex', justifyContent: 'space-between' }}>
-          <span>Total</span>
-          <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--text-secondary)' }}>
-            {allAlerts.length}
-          </span>
-        </div>
-        <div style={{ marginTop: 4, fontSize: 9, color: 'var(--text-muted)', lineHeight: 1.4 }}>
-          <span style={{ borderBottom: '1px solid currentColor' }}>——</span> polygon · <span style={{ borderBottom: '1px dashed currentColor' }}>- -</span> zone
-        </div>
+      <div className="severity-controls" aria-label="Alert severity filters">
+        <strong>Severity</strong>
+        {SEV_ORDER.filter(sev => counts[sev]).map(sev => <button key={sev} aria-pressed={!hiddenSev.has(sev)} onClick={() => toggleSev(sev)}>
+          <span aria-hidden="true" style={{ color: sevColor(sev) }}>●</span> {sev} ({counts[sev]})
+        </button>)}
+        <span>{alerts === null ? 'Alerts unavailable' : `${allAlerts.length} total`}</span>
+        <button onClick={() => mapRef.current?.flyTo(homeCenter, 8, { duration: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 1.2 })}>Home</button>
       </div>
-
-      {/* Home button */}
-      <button
-        onClick={() => mapRef.current?.flyTo(homeCenter, 8, { duration: 1.2 })}
-        style={{
-          position: 'absolute',
-          bottom: 40,
-          right: 10,
-          zIndex: 1000,
-          background: 'rgba(6,11,20,0.9)',
-          border: '1px solid var(--border-bright)',
-          color: 'var(--accent-cyan)',
-          borderRadius: 5,
-          padding: '5px 10px',
-          fontSize: 11,
-          cursor: 'pointer',
-          backdropFilter: 'blur(4px)',
-          fontWeight: 700,
-        }}
-        title="Fly to home station"
-      >
-        ⌂ Home
-      </button>
 
       {/* Camera panel modal triggered from popup */}
       {cameraTarget && (
@@ -513,7 +431,7 @@ export default function AlertsMap({
       )}
 
       {/* Empty state */}
-      {allAlerts.length === 0 && (
+      {alerts !== null && allAlerts.length === 0 && (
         <div
           style={{
             position: 'absolute',

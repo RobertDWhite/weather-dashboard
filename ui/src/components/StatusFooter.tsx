@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import type { HealthResponse } from '../types'
+import { useFeed } from '../hooks/useFeed'
+import { FeedStatus } from './FeedPanel'
 import { fetchHealth } from '../api'
 import PushSubscribeButton from './PushSubscribeButton'
 import LocaleSelector from './LocaleSelector'
@@ -47,22 +47,8 @@ export default function StatusFooter({
   alarmRepeating, alarmSilenced, onSilenceAlarm, webhookConfigured,
   tvMode, onTvModeToggle,
 }: Props) {
-  const [health, setHealth] = useState<HealthResponse | null>(null)
-
-  useEffect(() => {
-    let cancelled = false
-    const tick = async () => {
-      try {
-        const h = await fetchHealth()
-        if (!cancelled) setHealth(h)
-      } catch {
-        if (!cancelled) setHealth(null)
-      }
-    }
-    tick()
-    const t = setInterval(tick, 60_000)
-    return () => { cancelled = true; clearInterval(t) }
-  }, [])
+  const feed = useFeed('upstream-health', fetchHealth)
+  const health = feed.data
 
   const sources = health?.sources ?? {}
   const sourceKeys = Object.keys(SOURCE_LABELS)
@@ -76,15 +62,16 @@ export default function StatusFooter({
         padding: '4px 10px',
         background: 'var(--bg-base)',
         borderTop: '1px solid var(--border)',
-        fontSize: 10,
+        fontSize: 12,
         flexWrap: 'wrap',
         flexShrink: 0,
       }}
     >
+      {feed.status !== 'success' && <FeedStatus feed={feed} name="Source health" />}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', flex: 1, minWidth: 0 }}>
         {sourceKeys.map((k) => {
           const s = sources[k]
-          const ok = s?.ok
+          const ok = feed.status === 'success' ? s?.ok : undefined
           const color = ok === true ? '#22c55e' : ok === false ? '#ef4444' : '#6b7280'
           return (
             <span
@@ -102,7 +89,7 @@ export default function StatusFooter({
                   flexShrink: 0,
                 }}
               />
-              {SOURCE_LABELS[k]}
+              {SOURCE_LABELS[k]} · {ok === true ? 'OK' : ok === false ? 'Unavailable' : 'Unknown'}
             </span>
           )
         })}
@@ -114,7 +101,7 @@ export default function StatusFooter({
           style={{
             color: 'var(--text-muted)',
             fontFamily: 'var(--font-mono)',
-            fontSize: 10,
+            fontSize: 12,
             padding: '2px 6px',
             border: '1px solid var(--border)',
             borderRadius: 3,
@@ -139,7 +126,7 @@ export default function StatusFooter({
               padding: '3px 8px',
               borderRadius: 3,
               cursor: 'pointer',
-              fontSize: 10,
+              fontSize: 12,
               fontWeight: 700,
               textTransform: 'uppercase',
               letterSpacing: 0.5,
@@ -154,7 +141,7 @@ export default function StatusFooter({
           <span
             title="Outbound webhook configured — Discord/Slack notifications will fire on new tornado/severe alerts"
             style={{
-              fontSize: 9,
+              fontSize: 12,
               color: '#22c55e',
               fontWeight: 700,
               letterSpacing: 0.5,
@@ -177,7 +164,7 @@ export default function StatusFooter({
             padding: '3px 8px',
             borderRadius: 3,
             cursor: 'pointer',
-            fontSize: 10,
+            fontSize: 12,
             fontWeight: 700,
             letterSpacing: 0.5,
             textTransform: 'uppercase',
@@ -199,7 +186,7 @@ export default function StatusFooter({
               padding: '3px 8px',
               borderRadius: 3,
               cursor: 'pointer',
-              fontSize: 10,
+              fontSize: 12,
               fontWeight: 700,
               textTransform: 'uppercase',
               letterSpacing: 0.5,
@@ -220,7 +207,7 @@ export default function StatusFooter({
               padding: '3px 8px',
               borderRadius: 3,
               cursor: 'pointer',
-              fontSize: 10,
+              fontSize: 12,
             }}
           >
             Test

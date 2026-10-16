@@ -1,51 +1,19 @@
 /** AI-generated weather briefing — 2-3 sentence summary of current threats.
  * Backed by Ollama via /briefing/now. Only renders when Ollama is reachable
  * (auto-checks /briefing/status on mount). */
-import { useEffect, useState } from 'react'
-import type { BriefingResponse } from '../types'
+import { useFeed } from '../hooks/useFeed'
+import { FeedStatus } from './FeedPanel'
 import { fetchBriefing, fetchBriefingStatus } from '../api'
 
 export default function BriefingPanel() {
-  const [available, setAvailable] = useState<boolean | null>(null)
-  const [data, setData] = useState<BriefingResponse | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  // Re-poll status every 5 min so we recover from transient outages without
-  // requiring a full page reload
-  useEffect(() => {
-    let cancelled = false
-    const tick = () => fetchBriefingStatus()
-      .then((s) => { if (!cancelled) setAvailable(s.ok) })
-      .catch(() => { if (!cancelled) setAvailable(false) })
-    tick()
-    const t = setInterval(tick, 5 * 60_000)
-    return () => { cancelled = true; clearInterval(t) }
-  }, [])
-
-  const refresh = async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const d = await fetchBriefing()
-      setData(d)
-    } catch (e) {
-      setError(String(e))
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    if (available !== true) return
-    refresh()
-    // Refresh every 10 min
-    const t = setInterval(refresh, 10 * 60_000)
-    return () => clearInterval(t)
-  }, [available])
-
-  if (available === false) return null
-  if (available === null) return null
+  const availability = useFeed('briefing-status', fetchBriefingStatus, { interval: 300_000 })
+  const feed = useFeed('briefing', fetchBriefing, { enabled: availability.data?.ok === true, interval: 600_000 })
+  const data = feed.data
+  const loading = feed.refreshing
+  const error = feed.error
+  const refresh = feed.retry
+  if (!availability.data) return <FeedStatus feed={availability} name="AI briefing service" />
+  if (!availability.data.ok) return <p className="notice">AI briefing is not configured or the model service is unavailable. <button className="quiet-button" onClick={availability.retry}>Retry service</button></p>
 
   return (
     <div
@@ -54,6 +22,7 @@ export default function BriefingPanel() {
         borderTop: '2px solid #22d3ee',
       }}
     >
+      <FeedStatus feed={feed} name="AI briefing" />
       <div className="card-title" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         <span>🤖 AI Briefing</span>
         {data && (
@@ -92,7 +61,7 @@ export default function BriefingPanel() {
               color: 'var(--text-primary)',
               fontWeight: 500,
             }}>
-              {data.text || 'No active threats.'}
+              {data.text || 'No briefing text returned.'}
             </div>
             <div style={{ fontSize: 9, color: 'var(--text-muted)', marginTop: 6, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <span>{data.context.alerts_count} alert(s)</span>

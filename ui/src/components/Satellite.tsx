@@ -1,6 +1,7 @@
+import { useFeed } from '../hooks/useFeed'
+import { FeedStatus } from './FeedPanel'
 import { useEffect, useState } from 'react'
 import { fetchGoesUrls } from '../api'
-import type { GoesUrls } from '../types'
 
 type Channel = 'GeoColor' | 'Visible' | 'CleanIR' | 'WaterVapor' | 'NightMicrophysics' | 'Sandwich'
 
@@ -17,22 +18,19 @@ const CHANNEL_NIGHTTIME_NOTE: Partial<Record<Channel, string>> = {
 }
 
 export default function Satellite() {
-  const [urls, setUrls] = useState<GoesUrls | null>(null)
+  const feed = useFeed('satellite', fetchGoesUrls, { interval: 300_000 })
+  const urls = feed.data
   const [channel, setChannel] = useState<Channel>('GeoColor')
   const [imgKey, setImgKey] = useState(0)
   const [imgError, setImgError] = useState(false)
 
-  useEffect(() => {
-    const load = () => fetchGoesUrls().then(setUrls).catch(() => {})
-    load()
-    const t = setInterval(() => { load(); setImgKey((k) => k + 1) }, 300_000)
-    return () => clearInterval(t)
-  }, [])
+  useEffect(() => { setImgKey(k => k + 1); setImgError(false) }, [feed.lastSuccess])
 
   const imgUrl = urls?.GOES16?.CONUS?.[channel]
 
   return (
     <div className="card" style={{ display: 'flex', flexDirection: 'column' }}>
+      <FeedStatus feed={feed} name="Satellite" />
       <div className="card-title">
         🛰️ GOES-16 Satellite
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 3, flexWrap: 'wrap' }}>
@@ -67,11 +65,12 @@ export default function Satellite() {
             <span style={{ fontSize: 22 }}>🌑</span>
             <span style={{ fontSize: 11, color: 'var(--text-muted)', textAlign: 'center' }}>
               {CHANNEL_NIGHTTIME_NOTE[channel] ?? 'Image unavailable'}
+              <button className="quiet-button" onClick={() => { setImgError(false); setImgKey(k => k + 1); feed.retry() }}>Retry image</button>
             </span>
           </div>
         ) : (
           <div style={{ display: 'flex', justifyContent: 'center', padding: 20 }}>
-            <div className="spinner" />
+            <span>{feed.status === 'loading' ? 'Loading imagery…' : 'Imagery unavailable for this channel.'}</span>
           </div>
         )}
       </div>

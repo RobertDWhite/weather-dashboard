@@ -1,6 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
+import { useFeed } from '../hooks/useFeed'
+import { FeedStatus } from './FeedPanel'
+import { useEffect, useState } from 'react'
 import { fetchCameras, fetchOhgoCameras, fetchYouTubeLive } from '../api'
-import type { Camera, OhgoCamera, YouTubeLive } from '../types'
+import type { YouTubeLive } from '../types'
 import { useWindowWidth } from '../hooks/useWindowWidth'
 
 interface Props {
@@ -239,48 +241,25 @@ export default function CameraPanel({ lat, lon, label, radiusMiles = 80, youtube
   const isMobile = useWindowWidth() < 768
   const [tab, setTab] = useState<Tab>('windy')
   const [radius, setRadius] = useState(radiusMiles)
-  const [windy, setWindy] = useState<Camera[]>([])
-  const [ohgo, setOhgo] = useState<OhgoCamera[]>([])
-  const [ytVideos, setYtVideos] = useState<YouTubeLive[]>([])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
   const [imageModal, setImageModal] = useState<{ title: string; city?: string; imageUrl: string } | null>(null)
   const [windyModal, setWindyModal] = useState<{ title: string; city?: string; embedUrl: string; playerUrl?: string | null } | null>(null)
   const [ytModal, setYtModal] = useState<YouTubeLive | null>(null)
-  const abortRef = useRef<AbortController | null>(null)
-
-  // YouTube radius string from miles
   const ytRadius = `${Math.round(radius * 1.609)}km`
-
-  useEffect(() => {
-    if (abortRef.current) abortRef.current.abort()
-    const ac = new AbortController()
-    abortRef.current = ac
-    setLoading(true)
-    setError(null)
-
-    const ytOpts = youtubeQuery
-      ? { q: youtubeQuery, lat, lon, radius: ytRadius }
-      : { lat, lon, radius: ytRadius }
-
-    Promise.allSettled([
-      fetchCameras(lat, lon, Math.min(radius, 150), ac.signal),
-      fetchOhgoCameras(lat, lon, radius, ac.signal),
-      fetchYouTubeLive(ytOpts, ac.signal),
-    ]).then(([wr, or, yr]) => {
-      if (wr.status === 'fulfilled') setWindy(wr.value)
-      if (or.status === 'fulfilled') setOhgo(or.value)
-      if (yr.status === 'fulfilled') setYtVideos(yr.value)
-      setLoading(false)
-    })
-
-    return () => ac.abort()
-  }, [lat, lon, radius, ytRadius, youtubeQuery])
+  const windyFeed = useFeed(`cameras:${lat}:${lon}:${radius}`, s => fetchCameras(lat, lon, Math.min(radius, 150), s), { enabled: tab === 'windy', interval: 300_000 })
+  const ohgoFeed = useFeed(`traffic:${lat}:${lon}:${radius}`, s => fetchOhgoCameras(lat, lon, radius, s), { enabled: tab === 'ohgo', interval: 300_000 })
+  const youtubeFeed = useFeed(`youtube:${lat}:${lon}:${radius}:${youtubeQuery}`, s => fetchYouTubeLive({ q: youtubeQuery, lat, lon, radius: ytRadius }, s), { enabled: tab === 'youtube', interval: 300_000 })
+  const activeFeed = tab === 'windy' ? windyFeed : tab === 'ohgo' ? ohgoFeed : youtubeFeed
+  const windy = windyFeed.data ?? []
+  const ohgo = ohgoFeed.data ?? []
+  const ytVideos = youtubeFeed.data ?? []
+  const loading = activeFeed.status === 'loading'
+  const error = activeFeed.error
 
   const counts: Record<Tab, number> = { ohgo: ohgo.length, windy: windy.length, youtube: ytVideos.length }
 
   return (
     <div className="card" style={{ display: 'flex', flexDirection: 'column' }}>
+      <FeedStatus feed={activeFeed} name="Camera feed" />
       {/* Header */}
       <div className="card-title" style={{ marginBottom: 6 }}>
         📷 Live Cameras &amp; Streams
@@ -343,7 +322,7 @@ export default function CameraPanel({ lat, lon, label, radiusMiles = 80, youtube
         </div>
       )}
 
-      {!loading && counts[tab] === 0 && (
+      {activeFeed.status === 'success' && counts[tab] === 0 && (
         <div style={{ fontSize: 11, color: 'var(--text-muted)', padding: '8px 0' }}>
           {tab === 'youtube' ? 'No live streams found' : `No cameras within ${radius} miles`}
         </div>

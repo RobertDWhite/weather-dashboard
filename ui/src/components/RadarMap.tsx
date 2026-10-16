@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState, MutableRefObject } from 'react'
-import { MapContainer, TileLayer, GeoJSON, LayersControl, LayerGroup, CircleMarker, Popup, useMap, ScaleControl } from 'react-leaflet'
+import { MapContainer, TileLayer, GeoJSON, CircleMarker, Popup, useMap, ScaleControl } from 'react-leaflet'
 import type { Map as LeafletMap } from 'leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { fetchRadarTimestamps, fetchSpcOutlookDay1 } from '../api'
 import type {
   AprsStation, HurricaneStorm, LocalStormReport, MesoscaleDiscussion, MetarStation,
-  NWSAlertsResponse, Quake, RadarTimestamps, SpcWatch, StormCell, StormReports, Wildfire,
+  NWSAlertsResponse, Quake, SpcWatch, StormCell, StormReports, Wildfire,
 } from '../types'
 import HazardLayers from './HazardLayers'
 import NexradLayer from './NexradLayer'
@@ -15,6 +15,9 @@ import GlmLayer from './GlmLayer'
 import PrecipTypeLayer from './PrecipTypeLayer'
 import ProbSevereLayer from './ProbSevereLayer'
 import RangeRings from './RangeRings'
+import MapViewport from './MapViewport'
+import { useFeed } from '../hooks/useFeed'
+import { FeedStatus } from './FeedPanel'
 
 delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)._getIconUrl
 L.Icon.Default.mergeOptions({
@@ -44,6 +47,8 @@ interface Props {
   spotters?: import('../types').Spotter[]
   showSpotters?: boolean
   nexrad?: { site: string; product: string; refreshKey: number; lat?: number; lon?: number } | null
+  basemap?: 'dark' | 'street' | 'satellite'
+  showSpc?: boolean
   showMrms?: boolean
   showGlm?: boolean
   showPType?: boolean
@@ -126,10 +131,12 @@ export default function RadarMap({
   mapRef, alerts, reports, center, aprsStations, hurricanes, watches, mesoscales,
   metars, showMetars, lsrs, cells, fires, quakes, showCells, showFires, showQuakes,
   spotters, showSpotters,
-  nexrad, showMrms = false, showGlm = false, showPType = false, showProbSevere = false, showRangeRings, forceTimestamp,
+  nexrad, showMrms = false, showGlm = false, showPType = false, showProbSevere = false, showRangeRings, forceTimestamp, showSpc = false, basemap = 'dark',
 }: Props) {
-  const [radarData, setRadarData] = useState<RadarTimestamps | null>(null)
-  const [spcOutlook, setSpcOutlook] = useState<unknown>(null)
+  const radarFeed = useFeed('radar', fetchRadarTimestamps, { interval: 120_000 })
+  const radarData = radarFeed.data
+  const spcFeed = useFeed('spc-outlook', fetchSpcOutlookDay1, { enabled: showSpc, interval: 300_000 })
+  const spcOutlook = showSpc && spcFeed.status === 'success' ? spcFeed.data : null
   const [frameIdx, setFrameIdx] = useState(0)
   const [playing, setPlaying] = useState(false)
   const [speed, setSpeed] = useState(500)
@@ -139,22 +146,8 @@ export default function RadarMap({
     : []
 
   useEffect(() => {
-    const load = async () => {
-      try {
-        const [rd, sp] = await Promise.allSettled([
-          fetchRadarTimestamps(), fetchSpcOutlookDay1()
-        ])
-        if (rd.status === 'fulfilled') {
-          setRadarData(rd.value)
-          setFrameIdx(rd.value.radar.past.length - 1)
-        }
-        if (sp.status === 'fulfilled') setSpcOutlook(sp.value)
-      } catch (_) {}
-    }
-    load()
-    const t = setInterval(load, 120_000)
-    return () => clearInterval(t)
-  }, [])
+    if (forceTimestamp == null && radarData) setFrameIdx(Math.max(0, radarData.radar.past.length - 1))
+  }, [radarData, forceTimestamp])
 
   // Time-machine override: when forceTimestamp is set, snap radar to the
   // past frame whose timestamp is closest, and stop auto-looping.
@@ -185,10 +178,14 @@ export default function RadarMap({
     ? new Date(allFrames[frameIdx].time * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     : '--:--'
 
-  const isNowcast = frameIdx >= (radarData?.radar.past.length ?? 0)
+  const isNowcast = allFrames.length > 0 && frameIdx >= (radarData?.radar.past.length ?? 0)
 
   return (
-    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+    <div className="radar-frame">
+      <FeedStatus feed={radarFeed} name="Radar" />
+      {showSpc && <FeedStatus feed={spcFeed} name="SPC outlook" />}
+      {forceTimestamp != null && radarData && <div className="notice" role="status">Radar frame: {allFrames[frameIdx] ? new Date(allFrames[frameIdx].time * 1000).toLocaleString() : 'unavailable'} · nearest available frame; archive coverage may be shorter than the selected history.</div>}
+      <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
       <MapContainer
         center={center}
         zoom={6}
@@ -199,48 +196,18 @@ export default function RadarMap({
         attributionControl={true}
       >
         <MapRefCapture mapRef={mapRef} />
+        <MapViewport center={center} />
         <ScaleControl position="bottomright" imperial={true} metric={true} />
 
         {/* Radar rendered directly — bypasses react-leaflet's TileLayer to guarantee maxNativeZoom */}
         {radarData && <RadarLayer host={radarData.host} frames={allFrames} frameIdx={frameIdx} />}
 
-        <LayersControl position="topright">
-          {/* Base layers */}
-          {/* CARTO basemaps now require an API key (watermark otherwise) — use Esri's key-free dark canvas */}
-          <LayersControl.BaseLayer checked name="🗺️ Dark">
-            <LayerGroup>
-              <TileLayer
-                url="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}"
-                attribution="Esri, HERE, Garmin, OpenStreetMap contributors"
-                maxNativeZoom={16}
-                zIndex={1}
-              />
-              <TileLayer
-                url="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}"
-                maxNativeZoom={16}
-                zIndex={2}
-              />
-            </LayerGroup>
-          </LayersControl.BaseLayer>
-          <LayersControl.BaseLayer name="🛰️ Satellite">
-            <TileLayer
-              url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-              attribution="Esri, Maxar, Earthstar Geographics"
-              maxNativeZoom={19}
-              zIndex={1}
-            />
-          </LayersControl.BaseLayer>
-          <LayersControl.BaseLayer name="🗺️ Street">
-            <TileLayer
-              url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-              maxNativeZoom={19}
-              zIndex={1}
-            />
-          </LayersControl.BaseLayer>
-
+        <TileLayer
+          key={basemap}
+          url={basemap === 'satellite' ? 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}' : basemap === 'street' ? 'https://tile.openstreetmap.org/{z}/{x}/{y}.png' : 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}'}
+          attribution="Esri, OpenStreetMap contributors" zIndex={1} />
+        {basemap === 'dark' && <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}" zIndex={2} />}
           {/* NWS Alerts polygons */}
-          <LayersControl.Overlay checked name="⚠ NWS Alerts">
             <>
               {(alerts?.features ?? [])
                 .filter((f) => f.geometry)
@@ -270,10 +237,8 @@ export default function RadarMap({
                   )
                 })}
             </>
-          </LayersControl.Overlay>
 
           {/* SPC Outlook */}
-          <LayersControl.Overlay checked name="🌪 SPC Outlook">
             <>
               {spcOutlook && (
                 <GeoJSON
@@ -291,10 +256,8 @@ export default function RadarMap({
                 </GeoJSON>
               )}
             </>
-          </LayersControl.Overlay>
 
           {/* Storm Reports */}
-          <LayersControl.Overlay checked name="⚡ Storm Reports">
             <>
               {(reports?.tornado ?? []).map((r, i) => (
                 <CircleMarker
@@ -345,9 +308,7 @@ export default function RadarMap({
                 </CircleMarker>
               ))}
             </>
-          </LayersControl.Overlay>
           {/* APRS Weather Stations */}
-          <LayersControl.Overlay checked name="📡 APRS Signals">
             <>
               {(aprsStations ?? []).map((s) => {
                 const wx = s.weather
@@ -380,8 +341,6 @@ export default function RadarMap({
                 )
               })}
             </>
-          </LayersControl.Overlay>
-        </LayersControl>
 
         {/* Severe-weather overlays — always rendered when data is provided. */}
         <HazardLayers
@@ -424,26 +383,11 @@ export default function RadarMap({
         {showRangeRings && <RangeRings center={center} />}
       </MapContainer>
 
-      {/* Radar animation controls */}
-      <div
-        style={{
-          position: 'absolute',
-          bottom: 40,
-          left: '50%',
-          transform: 'translateX(-50%)',
-          zIndex: 1000,
-          background: 'rgba(6,11,20,0.9)',
-          border: '1px solid var(--border-bright)',
-          borderRadius: 8,
-          padding: '6px 12px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 10,
-          backdropFilter: 'blur(4px)',
-          minWidth: 340,
-        }}
-      >
+      </div>
+      {/* Playback occupies its own row; it never covers the map. */}
+      <div className="radar-playback">
         <button
+          disabled={!allFrames.length || forceTimestamp != null}
           onClick={() => setPlaying((p) => !p)}
           style={{
             display: 'flex',
@@ -464,6 +408,8 @@ export default function RadarMap({
         </button>
 
         <input
+          aria-label="Radar frame"
+          disabled={!allFrames.length || forceTimestamp != null}
           type="range"
           min={0}
           max={Math.max(0, allFrames.length - 1)}
@@ -485,7 +431,7 @@ export default function RadarMap({
           {isNowcast ? '▸ FCST ' + currentFrameTime : currentFrameTime}
         </div>
 
-        <select
+        <select aria-label="Playback speed"
           value={speed}
           onChange={(e) => setSpeed(Number(e.target.value))}
           style={{
@@ -504,23 +450,8 @@ export default function RadarMap({
         </select>
       </div>
 
-      {/* Legend */}
-      <div
-        style={{
-          position: 'absolute',
-          top: 8,
-          left: 8,
-          zIndex: 1000,
-          background: 'rgba(6,11,20,0.88)',
-          border: '1px solid var(--border)',
-          borderRadius: 6,
-          padding: '6px 9px',
-          fontSize: 10,
-          color: 'var(--text-secondary)',
-          backdropFilter: 'blur(3px)',
-          pointerEvents: 'none',
-        }}
-      >
+      {/* Only show the report key when that layer has data. */}
+      {reports && <div className="report-legend">
         <div style={{ fontWeight: 700, color: 'var(--accent-cyan)', marginBottom: 4, letterSpacing: 1 }}>
           STORM REPORTS
         </div>
@@ -529,7 +460,7 @@ export default function RadarMap({
             <span>{dot}</span><span>{label}</span>
           </div>
         ))}
-      </div>
+      </div>}
     </div>
   )
 }

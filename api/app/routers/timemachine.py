@@ -1,5 +1,5 @@
 """Time machine: SQLite-backed snapshot history of operationally-significant
-state (alerts, LSRs, storm reports, watches). Background task in lifespan()
+state (alerts and LSRs). Background task in lifespan()
 captures a snapshot every TIMEMACHINE_INTERVAL_SEC; old snapshots get pruned
 past TIMEMACHINE_RETENTION_HOURS.
 
@@ -72,7 +72,7 @@ def _connect() -> sqlite3.Connection:
 
 async def _fetch_snapshot(client: httpx.AsyncClient) -> dict | None:
     """Pull the smallest set of dynamic state we want to replay. Best-effort:
-    if any sub-fetch fails, we fall back to empty for that section."""
+    if either source fails, do not record a misleading empty snapshot."""
     lat = settings.observer_lat
     lon = settings.observer_lon
     out: dict = {"ts": int(_time.time()), "lat": lat, "lon": lon}
@@ -87,10 +87,16 @@ async def _fetch_snapshot(client: httpx.AsyncClient) -> dict | None:
         return None
 
     alerts = await _try("https://api.weather.gov/alerts/active")
-    out["alerts"] = alerts or {"features": []}
+    if not isinstance(alerts, dict) or not isinstance(alerts.get("features"), list):
+        return None
+    out["alerts"] = alerts
 
     lsr = await _try("https://mesonet.agron.iastate.edu/geojson/lsr.geojson?hours=2")
-    out["lsrs"] = lsr or {"features": []}
+    if not isinstance(lsr, dict) or not isinstance(lsr.get("features"), list):
+        # Archive completeness must not suppress fresh live warning delivery.
+        await _maybe_push_new_alerts(out)
+        return None
+    out["lsrs"] = lsr
 
     return out
 

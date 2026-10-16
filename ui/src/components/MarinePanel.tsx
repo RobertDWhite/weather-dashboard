@@ -1,6 +1,6 @@
+import { useFeed } from '../hooks/useFeed'
+import { FeedStatus } from './FeedPanel'
 /** NDBC moored buoys + NOAA CO-OPS tide gauges nearest the configured point. */
-import { useEffect, useState } from 'react'
-import type { BuoyEntry, TideEntry } from '../types'
 import { fetchBuoys, fetchTides } from '../api'
 
 interface Props {
@@ -10,32 +10,18 @@ interface Props {
 }
 
 export default function MarinePanel({ homeLat, homeLon, onLocate }: Props) {
-  const [buoys, setBuoys] = useState<BuoyEntry[]>([])
-  const [tides, setTides] = useState<TideEntry[]>([])
+  const buoy = useFeed(`buoys:${homeLat}:${homeLon}`, s => fetchBuoys(homeLat, homeLon, s), { interval: 600_000 })
+  const tide = useFeed(`tides:${homeLat}:${homeLon}`, s => fetchTides(homeLat, homeLon, s), { interval: 600_000 })
+  const buoys = buoy.data?.buoys ?? []
+  const tides = tide.data?.tides ?? []
 
-  useEffect(() => {
-    let cancelled = false
-    const tick = async () => {
-      try {
-        const [b, t] = await Promise.allSettled([
-          fetchBuoys(homeLat, homeLon),
-          fetchTides(homeLat, homeLon),
-        ])
-        if (cancelled) return
-        if (b.status === 'fulfilled') setBuoys(b.value.buoys)
-        if (t.status === 'fulfilled') setTides(t.value.tides)
-      } catch { /* */ }
-    }
-    tick()
-    const t = setInterval(tick, 10 * 60_000)
-    return () => { cancelled = true; clearInterval(t) }
-  }, [homeLat, homeLon])
-
-  if (buoys.length === 0 && tides.length === 0) return null
 
   return (
     <div className="card">
       <div className="card-title">🌊 Marine</div>
+      <FeedStatus feed={buoy} name="Buoy observations" /><FeedStatus feed={tide} name="Tide observations" />
+      {buoy.status === 'success' && !buoys.length && <p className="notice">No nearby buoy observations.</p>}
+      {tide.status === 'success' && !tides.length && <p className="notice">No nearby tide observations.</p>}
       <div style={{ padding: 6, display: 'flex', flexDirection: 'column', gap: 6 }}>
         {buoys.length > 0 && (
           <div>

@@ -18,7 +18,7 @@ function CustomTooltip({ active, payload, label }: { active?: boolean; payload?:
   return (
     <div style={{
       background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 6,
-      padding: '8px 12px', fontSize: 11,
+      padding: '8px 12px', fontSize: 12,
     }}>
       <div style={{ color: 'var(--accent-cyan)', fontWeight: 700, marginBottom: 4 }}>{label}</div>
       {payload.map((p) => (
@@ -33,7 +33,7 @@ function CustomTooltip({ active, payload, label }: { active?: boolean; payload?:
 export default function HourlyChart({ hourly }: Props) {
   if (!hourly.length) return (
     <div className="card">
-      <div className="card-title">📈 48-Hour Forecast</div>
+      <div className="card-title">📈 36-Hour Forecast</div>
       <div style={{ height: 80, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div className="spinner" />
       </div>
@@ -51,12 +51,12 @@ export default function HourlyChart({ hourly }: Props) {
   return (
     <div className="card">
       <div className="card-title">📈 36-Hour Forecast</div>
-      <ResponsiveContainer width="100%" height={120}>
+      <ResponsiveContainer width="100%" height={170}>
         <ComposedChart data={data} margin={{ top: 4, right: 10, left: -20, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
           <XAxis
             dataKey="time"
-            tick={{ fill: 'var(--text-muted)', fontSize: 9 }}
+            tick={{ fill: 'var(--text-muted)', fontSize: 12 }}
             interval={2}
             tickLine={false}
             axisLine={{ stroke: 'var(--border)' }}
@@ -64,7 +64,7 @@ export default function HourlyChart({ hourly }: Props) {
           <YAxis
             yAxisId="temp"
             orientation="left"
-            tick={{ fill: 'var(--text-muted)', fontSize: 9 }}
+            tick={{ fill: 'var(--text-muted)', fontSize: 12 }}
             tickLine={false}
             axisLine={false}
           />
@@ -72,13 +72,13 @@ export default function HourlyChart({ hourly }: Props) {
             yAxisId="pct"
             orientation="right"
             domain={[0, 100]}
-            tick={{ fill: 'var(--text-muted)', fontSize: 9 }}
+            tick={{ fill: 'var(--text-muted)', fontSize: 12 }}
             tickLine={false}
             axisLine={false}
           />
           <Tooltip content={<CustomTooltip />} />
           <Legend
-            wrapperStyle={{ fontSize: 10, color: 'var(--text-secondary)', paddingTop: 4 }}
+            wrapperStyle={{ fontSize: 12, color: 'var(--text-secondary)', paddingTop: 4 }}
           />
           <Bar yAxisId="pct" dataKey="Precip %" fill="rgba(0,136,204,0.5)" radius={[2, 2, 0, 0]} />
           <Area

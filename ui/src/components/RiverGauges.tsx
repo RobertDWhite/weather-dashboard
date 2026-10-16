@@ -1,99 +1,28 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { fetchRiverGauges } from '../api'
-import type { RiverGauge } from '../types'
-
-interface Props {
-  state?: string
-  onLocate: (lat: number, lon: number, zoom?: number) => void
-}
-
-function gaugeColor(height: number): string {
-  if (height < 5)  return 'var(--warn-green)'
-  if (height < 10) return 'var(--warn-yellow)'
-  if (height < 15) return 'var(--warn-orange)'
-  return 'var(--warn-red)'
-}
-
-function gaugeStatus(height: number): string {
-  if (height < 5)  return 'Normal'
-  if (height < 10) return 'Action'
-  if (height < 15) return 'Flood'
-  return 'Major Flood'
-}
-
+import { useFeed } from '../hooks/useFeed'
+import { riverStatus } from '../riverStatus'
+import FeedPanel from './FeedPanel'
+interface Props { state?: string; onLocate: (lat: number, lon: number, zoom?: number) => void }
 export default function RiverGauges({ state, onLocate }: Props) {
-  const [gauges, setGauges] = useState<RiverGauge[]>([])
-  const [loading, setLoading] = useState(true)
   const [expanded, setExpanded] = useState(false)
-
-  useEffect(() => {
-    if (!state) return
-    setLoading(true)
-    fetchRiverGauges(state)
-      .then((d) => { setGauges(d.gauges); setLoading(false) })
-      .catch(() => setLoading(false))
-  }, [state])
-
-  const elevated = gauges.filter((g) => g.height >= 10)
-  const display = expanded ? gauges.slice(0, 30) : (elevated.length ? elevated : gauges).slice(0, 8)
-
-  return (
-    <div className="card">
-      <div className="card-title" style={{ marginBottom: 8 }}>
-        🌊 River Gauges — {state}
-        <span style={{ marginLeft: 6, color: elevated.length > 0 ? 'var(--warn-orange)' : 'var(--warn-green)' }}>
-          {elevated.length > 0 ? `${elevated.length} elevated` : '✓ normal levels'}
-        </span>
-        <button
-          onClick={() => setExpanded((e) => !e)}
-          style={{
-            marginLeft: 'auto', fontSize: 10, color: 'var(--text-muted)',
-            background: 'none', border: 'none', cursor: 'pointer',
-          }}
-        >
-          {expanded ? 'Less ▲' : 'More ▼'}
+  const feed = useFeed(`rivers:${state}`, s => fetchRiverGauges(state, s), { enabled: !!state, interval: 300_000 })
+  if (!state) return <p className="notice">River gauges need a configured observer state.</p>
+  return <FeedPanel feed={feed} name={`River gauges · ${state}`}>{data => {
+    const gauges = [...data.gauges].sort((a, b) => Number(riverStatus(b).elevated) - Number(riverStatus(a).elevated))
+    const unknown = gauges.filter(g => !riverStatus(g).known).length
+    const elevated = gauges.filter(g => riverStatus(g).elevated).length
+    return <div className="card"><div className="card-title">River gauges — {state}</div>
+      <p className="notice">{gauges.length === 0 ? 'No gauge observations available.' : `${elevated} at or above action/flood stage · ${unknown} unclassified or stale`}</p>
+      <div className="river-grid">{(expanded ? gauges : gauges.slice(0, 8)).map(g => {
+        const status = riverStatus(g)
+        return <button className="river-gauge" key={g.siteCode} onClick={() => onLocate(g.lat, g.lon, 11)}>
+          <strong>{g.siteName}</strong><span>{g.height.toFixed(1)} {g.unit}</span><span style={{ color: status.color }}>{status.label}</span>
+          {g.thresholds?.minor != null && <span>Flood stage {g.thresholds.minor} {g.unit} · {g.thresholds.source}</span>}
+          <time dateTime={g.time}>Observed {new Date(g.time).toLocaleString()}</time>
         </button>
-      </div>
-
-      {loading ? (
-        <div style={{ display: 'flex', justifyContent: 'center', padding: 12 }}><div className="spinner" /></div>
-      ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 6 }}>
-          {display.map((g) => {
-            const color = gaugeColor(g.height)
-            const status = gaugeStatus(g.height)
-            const pct = Math.min(100, (g.height / 20) * 100)
-            return (
-              <div
-                key={g.siteCode}
-                onClick={() => onLocate(g.lat, g.lon, 11)}
-                style={{
-                  padding: '6px 8px',
-                  background: 'var(--bg-base)',
-                  borderRadius: 5,
-                  border: `1px solid ${g.height >= 10 ? color : 'var(--border)'}`,
-                  cursor: 'pointer',
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
-                  <span style={{ fontSize: 11, color: 'var(--text-secondary)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {g.siteName.replace(/\s+at\s+/i, ' @ ').replace(/\s+near\s+/i, ' ~ ')}
-                  </span>
-                  <span style={{ color, fontWeight: 700, fontSize: 12, marginLeft: 6, flexShrink: 0 }}>
-                    {g.height.toFixed(1)} ft
-                  </span>
-                </div>
-                <div className="gauge-bar">
-                  <div className="gauge-fill" style={{ width: `${pct}%`, background: color }} />
-                </div>
-                {g.height >= 10 && (
-                  <div style={{ fontSize: 10, color, marginTop: 3 }}>{status}</div>
-                )}
-              </div>
-            )
-          })}
-        </div>
-      )}
+      })}</div>
+      {gauges.length > 8 && <button className="quiet-button" onClick={() => setExpanded(!expanded)}>{expanded ? 'Show fewer gauges' : `Show all ${gauges.length} gauges`}</button>}
     </div>
-  )
+  }}</FeedPanel>
 }

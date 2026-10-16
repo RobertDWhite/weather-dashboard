@@ -2,7 +2,9 @@
  * snapshots; when the user moves off "live", the parent fetches a snapshot at
  * that timestamp and renders alerts/LSRs in historical mode.
  */
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo } from 'react'
+import { useFeed } from '../hooks/useFeed'
+import { FeedStatus } from './FeedPanel'
 import type { TimeMachineSnapshotMeta } from '../types'
 import { fetchTimeMachineList } from '../api'
 
@@ -15,29 +17,15 @@ interface Props {
 }
 
 export default function TimeMachineBar({ ts, onChange, hours = 6 }: Props) {
-  const [snaps, setSnaps] = useState<TimeMachineSnapshotMeta[]>([])
-  const [ready, setReady] = useState<boolean>(false)
-
-  useEffect(() => {
-    let cancelled = false
-    const tick = async () => {
-      try {
-        const r = await fetchTimeMachineList(hours)
-        if (!cancelled) {
-          setSnaps(r.snapshots)
-          setReady(r.ready)
-        }
-      } catch { /* tolerate */ }
-    }
-    tick()
-    const t = setInterval(tick, 60_000)
-    return () => { cancelled = true; clearInterval(t) }
-  }, [hours])
+  const feed = useFeed(`history:${hours}`, s => fetchTimeMachineList(hours, s))
+  const snaps = feed.data?.snapshots ?? []
+  const ready = feed.data?.ready ?? false
 
   const peakTor = useMemo(() => Math.max(0, ...snaps.map((s) => s.tornado_count)), [snaps])
   const peakAlerts = useMemo(() => Math.max(0, ...snaps.map((s) => s.alert_count)), [snaps])
 
-  if (!ready || snaps.length < 2) return null
+  if (feed.status !== 'success') return <FeedStatus feed={feed} name="Replay history" />
+  if (!ready || snaps.length < 2) return <p className="notice">Replay history is still collecting. Live weather remains available.</p>
 
   const minTs = snaps[0].ts
   const maxTs = snaps[snaps.length - 1].ts
@@ -55,18 +43,8 @@ export default function TimeMachineBar({ ts, onChange, hours = 6 }: Props) {
   }
 
   return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 8,
-        padding: '6px 10px',
-        background: 'var(--bg-panel)',
-        borderTop: '1px solid var(--border)',
-        borderBottom: '1px solid var(--border)',
-      }}
-    >
-      <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: 0.8, textTransform: 'uppercase', color: 'var(--text-muted)' }}>
+    <div className="time-machine">
+      <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: 0.8, textTransform: 'uppercase', color: 'var(--text-muted)' }}>
         ⏱ Time
       </span>
 
@@ -76,7 +54,7 @@ export default function TimeMachineBar({ ts, onChange, hours = 6 }: Props) {
           background: ts === null ? '#22c55e' : 'var(--bg-card)',
           border: `1px solid ${ts === null ? '#22c55e' : 'var(--border)'}`,
           color: ts === null ? '#000' : 'var(--text-secondary)',
-          padding: '2px 8px', borderRadius: 3, fontSize: 10, fontWeight: 700,
+          padding: '2px 8px', borderRadius: 3, fontSize: 12, fontWeight: 700,
           textTransform: 'uppercase', letterSpacing: 0.5, cursor: 'pointer',
         }}
       >
@@ -103,22 +81,23 @@ export default function TimeMachineBar({ ts, onChange, hours = 6 }: Props) {
       </div>
 
       <input
+        aria-label="Replay time"
         type="range"
-        min={minTs}
-        max={maxTs}
-        step={Math.max(1, Math.floor((maxTs - minTs) / Math.max(snaps.length - 1, 1)))}
-        value={cur}
+        min={0}
+        max={snaps.length - 1}
+        step={1}
+        value={ts === null ? snaps.length - 1 : snaps.reduce((best, s, i) => Math.abs(s.ts - cur) < Math.abs(snaps[best].ts - cur) ? i : best, 0)}
         onChange={(e) => {
           const v = Number(e.target.value)
-          if (v >= maxTs - 30) onChange(null)
-          else onChange(v)
+          if (v >= snaps.length - 1) onChange(null)
+          else onChange(snaps[v].ts)
         }}
         style={{ width: 180 }}
       />
 
       <span style={{
-        fontSize: 11, fontFamily: 'var(--font-mono)',
-        color: ts === null ? 'var(--accent-green)' : 'var(--accent-cyan)',
+        fontSize: 12, fontFamily: 'var(--font-mono)',
+        color: ts === null ? 'var(--warn-green)' : 'var(--accent-cyan)',
         minWidth: 96, textAlign: 'right',
       }}>
         {ts === null

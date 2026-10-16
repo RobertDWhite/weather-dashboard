@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
-import type { NwsTextProduct } from '../types'
+import { useFeed } from '../hooks/useFeed'
+import { FeedStatus } from './FeedPanel'
+import { useState } from 'react'
 import { fetchAfd, fetchHwo, fetchSpcDiscussion } from '../api'
 
 type Tab = 'afd' | 'hwo' | 'spc'
@@ -33,37 +34,9 @@ const TAB_TITLES: Record<Tab, string> = {
 
 export default function NwsTextPanel({ homeLat, homeLon }: Props) {
   const [tab, setTab] = useState<Tab>('afd')
-  const [data, setData] = useState<Record<Tab, NwsTextProduct | null>>({ afd: null, hwo: null, spc: null })
-  const [loading, setLoading] = useState<Record<Tab, boolean>>({ afd: false, hwo: false, spc: false })
-  const [error, setError] = useState<Record<Tab, string | null>>({ afd: null, hwo: null, spc: null })
   const [expanded, setExpanded] = useState(false)
-
-  useEffect(() => {
-    let cancelled = false
-    if (data[tab]) return
-    setLoading((s) => ({ ...s, [tab]: true }))
-    setError((s) => ({ ...s, [tab]: null }))
-    const fn =
-      tab === 'afd' ? () => fetchAfd(homeLat, homeLon) :
-      tab === 'hwo' ? () => fetchHwo(homeLat, homeLon) :
-      () => fetchSpcDiscussion()
-    fn()
-      .then((d) => {
-        if (cancelled) return
-        setData((s) => ({ ...s, [tab]: d }))
-      })
-      .catch((e) => {
-        if (cancelled) return
-        setError((s) => ({ ...s, [tab]: String(e) }))
-      })
-      .finally(() => {
-        if (!cancelled) setLoading((s) => ({ ...s, [tab]: false }))
-      })
-    return () => { cancelled = true }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab, homeLat, homeLon])
-
-  const cur = data[tab]
+  const feed = useFeed(`text:${tab}:${homeLat}:${homeLon}`, s => tab === 'afd' ? fetchAfd(homeLat, homeLon, s) : tab === 'hwo' ? fetchHwo(homeLat, homeLon, s) : fetchSpcDiscussion(s), { interval: 300_000 })
+  const cur = feed.data
   const text = cur?.stripped_text || cur?.text || ''
 
   return (
@@ -96,13 +69,8 @@ export default function NwsTextPanel({ homeLat, homeLon }: Props) {
           <span>{cur?.issued ? formatIssued(cur.issued) : ''}</span>
         </div>
 
-        {loading[tab] && <div style={{ fontSize: 11, color: 'var(--text-muted)', padding: 8 }}>Loading…</div>}
-        {error[tab] && (
-          <div style={{ fontSize: 11, color: '#fca5a5', padding: 8 }}>
-            Unavailable
-          </div>
-        )}
-        {!loading[tab] && !error[tab] && text && (
+        <FeedStatus feed={feed} name={TAB_TITLES[tab]} />
+        {text && (
           <pre
             style={{
               maxHeight: expanded ? 600 : 220,
@@ -123,7 +91,7 @@ export default function NwsTextPanel({ homeLat, homeLon }: Props) {
             {text}
           </pre>
         )}
-        {!loading[tab] && !error[tab] && text && (
+        {text && (
           <button
             onClick={() => setExpanded((v) => !v)}
             style={{

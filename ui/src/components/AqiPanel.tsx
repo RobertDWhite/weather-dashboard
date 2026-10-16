@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import type { AqiCurrent } from '../types'
+import { useFeed } from '../hooks/useFeed'
+import { FeedStatus } from './FeedPanel'
 import { fetchAqi } from '../api'
 
 interface Props {
@@ -9,28 +9,17 @@ interface Props {
 }
 
 export default function AqiPanel({ homeLat, homeLon, enabled = true }: Props) {
-  const [data, setData] = useState<AqiCurrent | null>(null)
-  const [loaded, setLoaded] = useState(false)
-
-  useEffect(() => {
-    if (!enabled) return
-    let cancelled = false
-    fetchAqi(homeLat, homeLon)
-      .then((d) => { if (!cancelled) setData(d) })
-      .catch(() => { if (!cancelled) setData(null) })
-      .finally(() => { if (!cancelled) setLoaded(true) })
-    const t = setInterval(() => {
-      fetchAqi(homeLat, homeLon).then((d) => { if (!cancelled) setData(d) }).catch(() => {})
-    }, 30 * 60_000)
-    return () => { cancelled = true; clearInterval(t) }
-  }, [homeLat, homeLon, enabled])
-
-  if (!enabled || !loaded || !data || data.observations.length === 0) return null
+  const feed = useFeed(`aqi:${homeLat}:${homeLon}`, s => fetchAqi(homeLat, homeLon, s), { enabled, interval: 600_000 })
+  const data = feed.data
+  if (!enabled) return null
+  if (!data) return <FeedStatus feed={feed} name="Air quality" />
+  if (!data.observations.length) return <><FeedStatus feed={feed} name="Air quality" />{feed.status === 'success' && <p className="notice">No air quality observations available.</p>}</>
   const dom = data.dominant
   if (!dom) return null
 
   return (
     <div className="card">
+      <FeedStatus feed={feed} name="Air quality" />
       <div className="card-title">
         🌫 Air Quality
         <span style={{ fontSize: 9, color: 'var(--text-muted)', fontWeight: 400, marginLeft: 6 }}>

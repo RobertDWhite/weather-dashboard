@@ -1,8 +1,9 @@
+import { useFeed } from '../hooks/useFeed'
+import { FeedStatus } from './FeedPanel'
 /** Lightning potential — Open-Meteo's hourly LPI + thunderstorm probability
  * for the home point. Not real-time strikes (no free strike feed); shows
  * forecast risk for the next 12h as a sparkline + peak chip. */
-import { useEffect, useMemo, useState } from 'react'
-import type { LightningResponse } from '../types'
+import { useMemo } from 'react'
 import { fetchLightning } from '../api'
 
 interface Props {
@@ -19,21 +20,8 @@ function colorForLpi(lpi: number): string {
 }
 
 export default function LightningPanel({ homeLat, homeLon }: Props) {
-  const [data, setData] = useState<LightningResponse | null>(null)
-
-  useEffect(() => {
-    let cancelled = false
-    const tick = async () => {
-      try {
-        const d = await fetchLightning(homeLat, homeLon)
-        if (!cancelled) setData(d)
-      } catch { /* */ }
-    }
-    tick()
-    const t = setInterval(tick, 15 * 60_000)
-    return () => { cancelled = true; clearInterval(t) }
-  }, [homeLat, homeLon])
-
+  const feed = useFeed(`lightning:${homeLat}:${homeLon}`, s => fetchLightning(homeLat, homeLon, s), { interval: 300_000 })
+  const data = feed.data
   const sparkline = useMemo(() => {
     if (!data?.items?.length) return null
     const vals = data.items.map((it) => Math.max(0, it.lightning_potential ?? 0))
@@ -41,9 +29,8 @@ export default function LightningPanel({ homeLat, homeLon }: Props) {
     return { vals, peak }
   }, [data])
 
-  if (!data || !sparkline) return null
-  // Skip render if LPI never goes meaningful (avoid clutter when totally dry)
-  if ((data.peak_lpi ?? 0) < 0.5 && (data.peak_thunderstorm_probability ?? 0) < 20) return null
+  if (!data) return <FeedStatus feed={feed} name="Lightning potential" />
+  if (!sparkline) return <><FeedStatus feed={feed} name="Lightning potential" />{feed.status === 'success' && <p className="notice">No lightning potential data available.</p>}</>
 
   const peakLpi = data.peak_lpi ?? 0
   const peakTprob = data.peak_thunderstorm_probability ?? 0
@@ -51,6 +38,7 @@ export default function LightningPanel({ homeLat, homeLon }: Props) {
 
   return (
     <div className="card">
+      <FeedStatus feed={feed} name="Lightning potential" />
       <div className="card-title">⚡ Lightning Potential (12h)</div>
       <div style={{ padding: 8 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 6 }}>
