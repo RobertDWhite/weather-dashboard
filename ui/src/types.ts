@@ -518,6 +518,7 @@ export interface HrrrForecastResponse {
 // ── AI briefing ───────────────────────────────────────────────────
 
 export interface BriefingResponse {
+  source?: 'ollama' | 'fallback'
   text: string
   model: string
   context: { alerts_count: number; lsrs_count: number; has_afd: boolean; has_hwo: boolean }

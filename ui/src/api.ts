@@ -38,12 +38,12 @@ import type {
 
 const BASE = '/api'
 
-export async function get<T>(path: string, signal?: AbortSignal): Promise<T> {
+export async function get<T>(path: string, signal?: AbortSignal, timeoutMs = 20_000): Promise<T> {
   const controller = new AbortController()
   const abort = () => controller.abort()
   if (signal?.aborted) controller.abort()
   signal?.addEventListener('abort', abort, { once: true })
-  const timeout = setTimeout(abort, 20_000)
+  const timeout = setTimeout(abort, timeoutMs)
   try {
     const r = await fetch(`${BASE}${path}`, { signal: controller.signal })
     if (!r.ok) throw new Error(`${r.status} ${r.statusText} — ${path}`)
@@ -202,7 +202,7 @@ export const fetchHrrrSmoke = (hours = 12, s?: AbortSignal) =>
 
 // AI briefing + status
 export const fetchBriefing = (s?: AbortSignal) =>
-  get<BriefingResponse>('/briefing/now', s)
+  get<BriefingResponse>('/briefing/now', s, 120_000)
 export const fetchBriefingStatus = (s?: AbortSignal) =>
   get<{ ok: boolean; available_models?: string[]; configured_model?: string }>('/briefing/status', s)
 

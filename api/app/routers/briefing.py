@@ -222,6 +222,9 @@ async def _ask_ollama(prompt: str) -> str:
             "prompt": prompt,
             "system": SYSTEM_PROMPT,
             "stream": False,
+            # Reasoning models can spend the entire short token budget on
+            # thinking and return an empty response. This is a concise summary.
+            "think": False,
             "options": {
                 "temperature": 0.2,
                 "num_predict": 220,
@@ -237,7 +240,10 @@ async def _ask_ollama(prompt: str) -> str:
                 r = await client.post(url, json=body)
         r.raise_for_status()
         data = r.json() or {}
-    return (data.get("response") or "").strip()
+    text = (data.get("response") or "").strip()
+    if not text:
+        raise ValueError("Ollama returned no briefing text")
+    return text
 
 
 @router.get("/now")
@@ -275,17 +281,17 @@ async def briefing_now(
     # Coalesce concurrent cache-miss requests so we only hit Ollama once per
     # unique fingerprint. Subsequent in-flight callers await the same future.
     from app.coalesce import coalesce
-    return await coalesce(f"brief:{cache_key}", lambda: _generate_briefing(ctx, lat, lon, fp, cache_key))
+    return await coalesce(f"brief:{cache_key}", lambda: _generate_briefing(ctx, lat, lon, fp, cache_key, refresh=refresh))
 
 
-async def _generate_briefing(ctx: dict, lat: float, lon: float, fp: str, cache_key: str) -> dict:
+async def _generate_briefing(ctx: dict, lat: float, lon: float, fp: str, cache_key: str, *, refresh: bool = False) -> dict:
     from app.metrics import briefing_duration, briefing_generated
     import time as __t
 
     # Re-check cache inside the coalesce window — another concurrent caller
     # may have already populated it just before us.
     cached = _cache.get(cache_key)
-    if cached:
+    if cached and not refresh:
         return cached
 
     started = __t.monotonic()
@@ -303,6 +309,7 @@ async def _generate_briefing(ctx: dict, lat: float, lon: float, fp: str, cache_k
 
     result = {
         "text": text,
+        "source": source,
         "model": _resolved_model[0] or settings.ollama_model,
         "context": {
             "alerts_count": len(ctx.get("alerts", [])),
@@ -316,7 +323,9 @@ async def _generate_briefing(ctx: dict, lat: float, lon: float, fp: str, cache_k
         "lat": lat,
         "lon": lon,
     }
-    _cache[cache_key] = result
+    # Do not trap a recovered service behind an hour-long offline response.
+    if source == "ollama":
+        _cache[cache_key] = result
     return result
 
 
@@ -473,6 +482,7 @@ async def prioritize(req: PrioritizeRequest):
                 "system": PRIORITIZE_SYSTEM,
                 "stream": False,
                 "format": "json",
+                "think": False,
                 "options": {"temperature": 0.0, "num_predict": 800},
             }
             r = await client.post(url, json=body)

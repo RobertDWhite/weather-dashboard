@@ -1,9 +1,23 @@
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { useFeed } from '../hooks/useFeed'
-import { get } from '../api'
+import { fetchBriefing, get } from '../api'
 
 describe('feed reliability', () => {
+  it('allows AI briefings longer than the standard feed timeout and still honors cancellation', async () => {
+    vi.useFakeTimers()
+    let requestSignal: AbortSignal | undefined
+    vi.stubGlobal('fetch', vi.fn((_url, options) => {
+      requestSignal = options.signal
+      return new Promise((_resolve, reject) => options.signal.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError'))))
+    }))
+    const controller = new AbortController()
+    const request = fetchBriefing(controller.signal).catch(e => e)
+    await vi.advanceTimersByTimeAsync(25_000)
+    expect(requestSignal?.aborted).toBe(false)
+    controller.abort()
+    expect((await request).name).toBe('AbortError')
+  })
   it('does not turn a failed initial request into empty successful data', async () => {
     const { result } = renderHook(() =>
       useFeed('alerts', async () => {

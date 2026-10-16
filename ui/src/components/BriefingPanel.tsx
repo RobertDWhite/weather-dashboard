@@ -55,6 +55,7 @@ export default function BriefingPanel() {
         )}
         {!error && data && (
           <>
+            {data.source === 'fallback' && <p className="notice">AI unavailable · showing a basic weather summary. Retry to reconnect.</p>}
             <div style={{
               fontSize: 13,
               lineHeight: 1.55,
