@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { NWSAlert } from '../types'
+import { shortAlertArea } from './AlertPanel'
 
 interface Props {
   alerts: NWSAlert[]
@@ -19,6 +20,7 @@ const SEV_BORDER: Record<string, string> = {
 export default function AlertBanner({ alerts, onLocate, onOpenDrawer }: Props) {
   const [idx, setIdx] = useState(0)
   useEffect(() => {
+    setIdx(0)
     if (alerts.length <= 1) return
     const t = setInterval(() => setIdx((i) => (i + 1) % alerts.length), 5000)
     return () => clearInterval(t)
@@ -45,10 +47,11 @@ export default function AlertBanner({ alerts, onLocate, onOpenDrawer }: Props) {
 
   return (
     <div
+      className="alert-banner"
       role="button"
       tabIndex={0}
       aria-live="polite"
-      aria-label={`${alert.properties.event} for ${alert.properties.areaDesc}. Click to view all active alerts.`}
+      aria-label={`${alert.properties.event} for ${shortAlertArea(alert.properties.areaDesc)}. Click to view all active alerts.`}
       style={{
         background: bg,
         borderBottom: `2px solid ${color}`,
@@ -61,18 +64,23 @@ export default function AlertBanner({ alerts, onLocate, onOpenDrawer }: Props) {
         animation: 'slide-in 0.3s ease-out',
       }}
       onClick={handleClick}
-      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleClick() } }}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          handleClick()
+        }
+      }}
       title="Click to view all active alerts"
     >
       <span style={{ fontSize: 16, flexShrink: 0 }}>
         {sev === 'Extreme' ? '🌪️' : sev === 'Severe' ? '⛈️' : '⚠️'}
       </span>
-      <div style={{ flex: 1, minWidth: 0 }}>
+      <div className="alert-banner-summary" style={{ flex: 1, minWidth: 0 }}>
         <span style={{ color, fontWeight: 800, fontSize: 12, letterSpacing: 0.5 }}>
           {alert.properties.event.toUpperCase()}
         </span>
         <span style={{ color: 'var(--text-secondary)', fontSize: 12, marginLeft: 8 }}>
-          {alert.properties.areaDesc}
+          {shortAlertArea(alert.properties.areaDesc)}
         </span>
         <span style={{ color: 'var(--text-muted)', fontSize: 11, marginLeft: 8 }}>
           {alert.properties.headline?.split(' until ')?.[1]
@@ -86,7 +94,17 @@ export default function AlertBanner({ alerts, onLocate, onOpenDrawer }: Props) {
             {idx + 1}/{alerts.length}
           </span>
         )}
-        <span style={{ fontSize: 10, color, fontWeight: 700, background: `${color}22`, border: `1px solid ${color}44`, borderRadius: 4, padding: '2px 7px' }}>
+        <span
+          style={{
+            fontSize: 10,
+            color,
+            fontWeight: 700,
+            background: `${color}22`,
+            border: `1px solid ${color}44`,
+            borderRadius: 4,
+            padding: '2px 7px',
+          }}
+        >
           VIEW ALL ↗
         </span>
       </div>

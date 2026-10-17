@@ -13,11 +13,13 @@ export default function LayersDrawer({
   children,
   onClose,
   replay,
+  presets,
 }: {
   options: LayerOption[]
   children: ReactNode
   onClose: () => void
   replay: boolean
+  presets?: ReactNode
 }) {
   const ref = useDialog(onClose)
   const groups = [...new Set(options.map((o) => o.group))]
@@ -43,6 +45,7 @@ export default function LayersDrawer({
             Replay is showing archived alerts, reports, and available radar. Live overlays are paused.
           </p>
         )}
+        {presets}
         {groups.map((group) => (
           <fieldset key={group}>
             <legend>{group}</legend>

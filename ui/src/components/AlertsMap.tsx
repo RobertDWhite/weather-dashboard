@@ -1,20 +1,42 @@
 import { MutableRefObject, useEffect, useMemo, useState } from 'react'
-import { MapContainer, TileLayer, GeoJSON, useMap, useMapEvent, ScaleControl, CircleMarker, Popup } from 'react-leaflet'
+import {
+  MapContainer,
+  TileLayer,
+  GeoJSON,
+  useMap,
+  useMapEvent,
+  ScaleControl,
+  CircleMarker,
+  Popup,
+} from 'react-leaflet'
 import type { Map as LeafletMap, StyleFunction } from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { format, parseISO } from 'date-fns'
 import type {
-  AprsStation, HurricaneStorm, LocalStormReport, MesoscaleDiscussion, MetarStation,
-  NWSAlert, NWSAlertsResponse, Quake, SpcWatch, StormCell, StormReports, Wildfire,
+  AprsStation,
+  HurricaneStorm,
+  LocalStormReport,
+  MesoscaleDiscussion,
+  MetarStation,
+  NWSAlert,
+  NWSAlertsResponse,
+  Quake,
+  SpcWatch,
+  StormCell,
+  StormReports,
+  Wildfire,
 } from '../types'
 import { fetchZoneGeometries } from '../api'
 import CameraPanel from './CameraPanel'
-import MapViewport from './MapViewport'
+import MapViewport, { type MapViewportProps } from './MapViewport'
+import { alertZonePaths, geometryRevision } from '../mapData'
+import type { Basemap } from '../mapWorkflows'
 import HazardLayers from './HazardLayers'
 import NexradLayer from './NexradLayer'
 import RangeRings from './RangeRings'
 
-interface Props {
+interface Props extends Omit<MapViewportProps, 'center'> {
+  basemap?: Basemap
   mapRef: MutableRefObject<LeafletMap | null>
   alerts: NWSAlertsResponse | null
   reports: StormReports | null
@@ -40,20 +62,24 @@ interface Props {
 
 function MapRefCapture({ mapRef }: { mapRef: MutableRefObject<LeafletMap | null> }) {
   const map = useMap()
-  useEffect(() => { mapRef.current = map }, [map, mapRef])
+  useEffect(() => {
+    mapRef.current = map
+  }, [map, mapRef])
   return null
 }
 
 const SEV_COLOR: Record<string, string> = {
-  Extreme:  '#ff2d55',
-  Severe:   '#ff6b35',
+  Extreme: '#ff2d55',
+  Severe: '#ff6b35',
   Moderate: '#ffd60a',
-  Minor:    '#30d158',
-  Unknown:  '#888888',
+  Minor: '#30d158',
+  Unknown: '#888888',
 }
 const SEV_ORDER = ['Extreme', 'Severe', 'Moderate', 'Minor', 'Unknown']
 
-function sevColor(sev: string) { return SEV_COLOR[sev] ?? '#888888' }
+function sevColor(sev: string) {
+  return SEV_COLOR[sev] ?? '#888888'
+}
 
 const EVENT_EMOJI: Record<string, string> = {
   'Tornado Warning': '🌪️',
@@ -97,16 +123,39 @@ function PopupCameraWirer({ onCamera }: { onCamera: (lat: number, lon: number, l
     const lon = parseFloat(btn.dataset.camLon ?? '')
     const label = btn.dataset.camLabel ?? ''
     if (isNaN(lat) || isNaN(lon)) return
-    btn.onclick = (ev) => { ev.stopPropagation(); onCamera(lat, lon, label) }
+    btn.onclick = (ev) => {
+      ev.stopPropagation()
+      onCamera(lat, lon, label)
+    }
   })
   return null
 }
 
 export default function AlertsMap({
-  mapRef, alerts, reports, homeCenter, aprsStations, hurricanes, watches, mesoscales,
-  metars, showMetars, lsrs, cells, fires, quakes, showCells, showFires, showQuakes,
-  spotters, showSpotters,
-  nexrad, showRangeRings,
+  mapRef,
+  alerts,
+  reports,
+  homeCenter,
+  aprsStations,
+  hurricanes,
+  watches,
+  mesoscales,
+  metars,
+  showMetars,
+  lsrs,
+  cells,
+  fires,
+  quakes,
+  showCells,
+  showFires,
+  showQuakes,
+  spotters,
+  showSpotters,
+  nexrad,
+  basemap = 'dark',
+  showRangeRings,
+  position,
+  onPositionChange,
 }: Props) {
   const [hiddenSev, setHiddenSev] = useState<Set<string>>(new Set())
   const [cameraTarget, setCameraTarget] = useState<{ lat: number; lon: number; label: string } | null>(null)
@@ -114,22 +163,27 @@ export default function AlertsMap({
 
   const allAlerts = alerts?.features ?? []
 
-  // Fetch zone geometries for alerts that lack polygon geometry
+  const zonesKey = JSON.stringify(alertZonePaths(allAlerts))
+  const [zoneError, setZoneError] = useState(false)
+  const [zoneRetry, setZoneRetry] = useState(0)
   useEffect(() => {
-    const noGeo = allAlerts.filter((a) => !a.geometry)
-    const zonePaths = [...new Set(
-      noGeo.flatMap((a) => {
-        const zones: string[] = (a.properties as unknown as { affectedZones?: string[] }).affectedZones ?? []
-        return zones.map((url) => {
-          // e.g. https://api.weather.gov/zones/forecast/OHZ055 → forecast/OHZ055
-          const m = url.match(/\/zones\/([^/]+\/[^/]+)$/)
-          return m ? m[1] : null
-        }).filter(Boolean) as string[]
-      })
-    )]
-    if (!zonePaths.length) return
-    fetchZoneGeometries(zonePaths).then(setZoneGeos).catch(() => {})
-  }, [allAlerts.length])
+    const paths: string[] = JSON.parse(zonesKey)
+    const controller = new AbortController()
+    setZoneGeos({})
+    setZoneError(false)
+    if (paths.length)
+      fetchZoneGeometries(paths, controller.signal)
+        .then((data) => {
+          if (!controller.signal.aborted) {
+            setZoneGeos(data)
+            setZoneError(paths.some((path) => !data[path]))
+          }
+        })
+        .catch(() => {
+          if (!controller.signal.aborted) setZoneError(true)
+        })
+    return () => controller.abort()
+  }, [zonesKey, zoneRetry])
 
   // Count per severity
   const counts = useMemo(() => {
@@ -169,7 +223,7 @@ export default function AlertsMap({
   }, [allAlerts, hiddenSev, zoneGeos])
 
   // GeoJSON key forces re-render when data changes
-  const geoKey = allAlerts.length
+  const geoKey = geometryRevision(allAlerts)
 
   const styleFor: StyleFunction = (feature) => {
     const sev: string = (feature as unknown as NWSAlert).properties?.severity ?? 'Unknown'
@@ -231,6 +285,12 @@ export default function AlertsMap({
 
   return (
     <div className="alerts-map-frame">
+      {zoneError && (
+        <p className="notice" role="status">
+          Some alert areas could not be drawn. Alert counts still include them.{' '}
+          <button onClick={() => setZoneRetry((n) => n + 1)}>Retry areas</button>
+        </p>
+      )}
       <MapContainer
         center={[38, -97]}
         zoom={4}
@@ -241,27 +301,35 @@ export default function AlertsMap({
         attributionControl={true}
       >
         <MapRefCapture mapRef={mapRef} />
-        <MapViewport center={homeCenter} />
+        <MapViewport center={homeCenter} position={position} onPositionChange={onPositionChange} />
         <PopupCameraWirer onCamera={(lat, lon, label) => setCameraTarget({ lat, lon, label })} />
         <ScaleControl position="bottomright" imperial={true} metric={true} />
 
-        {/* CARTO basemaps now require an API key (watermark otherwise) — use Esri's key-free dark canvas */}
         <TileLayer
-          url="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}"
-          attribution="Esri, HERE, Garmin, OpenStreetMap contributors"
+          key={basemap}
+          url={
+            basemap === 'satellite'
+              ? 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+              : basemap === 'street'
+                ? 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
+                : 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}'
+          }
+          attribution="Esri, OpenStreetMap contributors"
           maxNativeZoom={16}
           zIndex={1}
         />
-        <TileLayer
-          url="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}"
-          maxNativeZoom={16}
-          zIndex={2}
-        />
+        {basemap === 'dark' && (
+          <TileLayer
+            url="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}"
+            maxNativeZoom={16}
+            zIndex={2}
+          />
+        )}
 
         {/* Zone-based alerts (lighter, dashed) */}
         {zoneFeatures.length > 0 && (
           <GeoJSON
-            key={`zones-${geoKey}-${[...hiddenSev].join()}-${Object.keys(zoneGeos).length}`}
+            key={`zones-${geoKey}-${[...hiddenSev].join()}-${geometryRevision(zoneGeos)}`}
             data={{ type: 'FeatureCollection', features: zoneFeatures } as GeoJSON.FeatureCollection}
             style={zoneStyleFor}
             onEachFeature={onEachFeature}
@@ -288,8 +356,10 @@ export default function AlertsMap({
           >
             <Popup>
               <div style={{ color: '#111' }}>
-                <strong>🌪️ Tornado</strong> {r.magnitude && `EF${r.magnitude}`}<br />
-                {r.location}, {r.state}<br />
+                <strong>🌪️ Tornado</strong> {r.magnitude && `EF${r.magnitude}`}
+                <br />
+                {r.location}, {r.state}
+                <br />
                 <small>{r.comment}</small>
               </div>
             </Popup>
@@ -304,7 +374,8 @@ export default function AlertsMap({
           >
             <Popup>
               <div style={{ color: '#111' }}>
-                <strong>🧊 Hail</strong> {r.size}&quot;<br />
+                <strong>🧊 Hail</strong> {r.size}&quot;
+                <br />
                 {r.location}, {r.state}
               </div>
             </Popup>
@@ -319,7 +390,8 @@ export default function AlertsMap({
           >
             <Popup>
               <div style={{ color: '#111' }}>
-                <strong>💨 High Wind</strong> {r.speed && `${r.speed} mph`}<br />
+                <strong>💨 High Wind</strong> {r.speed && `${r.speed} mph`}
+                <br />
                 {r.location}, {r.state}
               </div>
             </Popup>
@@ -332,7 +404,9 @@ export default function AlertsMap({
           radius={7}
           pathOptions={{ color: '#00d4ff', fillColor: '#00d4ff', fillOpacity: 1, weight: 2 }}
         >
-          <Popup><div style={{ color: '#111', fontWeight: 700 }}>Home Station</div></Popup>
+          <Popup>
+            <div style={{ color: '#111', fontWeight: 700 }}>Home Station</div>
+          </Popup>
         </CircleMarker>
 
         {/* Severe-weather overlays — hurricanes, watches, mesoscale discussions, METAR mesh, LSRs. */}
@@ -343,10 +417,14 @@ export default function AlertsMap({
           metars={metars}
           showMetars={showMetars}
           lsrs={lsrs}
-          cells={cells} showCells={showCells}
-          fires={fires} showFires={showFires}
-          quakes={quakes} showQuakes={showQuakes}
-          spotters={spotters} showSpotters={showSpotters}
+          cells={cells}
+          showCells={showCells}
+          fires={fires}
+          showFires={showFires}
+          quakes={quakes}
+          showQuakes={showQuakes}
+          spotters={spotters}
+          showSpotters={showSpotters}
         />
 
         {nexrad && nexrad.site && (
@@ -379,11 +457,11 @@ export default function AlertsMap({
                     {wx?.temp_f != null && <div>Temp: {wx.temp_f}°F</div>}
                     {wx?.humidity_pct != null && <div>Humidity: {wx.humidity_pct}%</div>}
                     {wx?.wind_gust_mph != null && (
-                      <div>Gust: {wx.wind_gust_mph} mph{wx.wind_dir_deg != null ? ` @ ${wx.wind_dir_deg}°` : ''}</div>
+                      <div>
+                        Gust: {wx.wind_gust_mph} mph{wx.wind_dir_deg != null ? ` @ ${wx.wind_dir_deg}°` : ''}
+                      </div>
                     )}
-                    {wx?.wind_speed_mph != null && (
-                      <div>Wind: {wx.wind_speed_mph} mph</div>
-                    )}
+                    {wx?.wind_speed_mph != null && <div>Wind: {wx.wind_speed_mph} mph</div>}
                     {wx?.pressure_mbar != null && <div>Pressure: {wx.pressure_mbar} mb</div>}
                     {wx?.rain_1h_in != null && <div>Rain 1h: {wx.rain_1h_in}&quot;</div>}
                     {wx?.rain_24h_in != null && <div>Rain 24h: {wx.rain_24h_in}&quot;</div>}
@@ -397,34 +475,82 @@ export default function AlertsMap({
 
       <div className="severity-controls" aria-label="Alert severity filters">
         <strong>Severity</strong>
-        {SEV_ORDER.filter(sev => counts[sev]).map(sev => <button key={sev} aria-pressed={!hiddenSev.has(sev)} onClick={() => toggleSev(sev)}>
-          <span aria-hidden="true" style={{ color: sevColor(sev) }}>●</span> {sev} ({counts[sev]})
-        </button>)}
+        {SEV_ORDER.filter((sev) => counts[sev]).map((sev) => (
+          <button key={sev} aria-pressed={!hiddenSev.has(sev)} onClick={() => toggleSev(sev)}>
+            <span aria-hidden="true" style={{ color: sevColor(sev) }}>
+              ●
+            </span>{' '}
+            {sev} ({counts[sev]})
+          </button>
+        ))}
         <span>{alerts === null ? 'Alerts unavailable' : `${allAlerts.length} total`}</span>
-        <button onClick={() => mapRef.current?.flyTo(homeCenter, 8, { duration: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 1.2 })}>Home</button>
       </div>
 
       {/* Camera panel modal triggered from popup */}
       {cameraTarget && (
         <div
-          style={{ position: 'absolute', inset: 0, zIndex: 2000, background: 'rgba(6,11,20,0.88)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+          style={{
+            position: 'absolute',
+            inset: 0,
+            zIndex: 2000,
+            background: 'rgba(6,11,20,0.88)',
+            backdropFilter: 'blur(6px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 16,
+          }}
           onClick={() => setCameraTarget(null)}
         >
           <div
-            style={{ background: 'var(--bg-panel)', border: '1px solid var(--border-bright)', borderRadius: 10, overflow: 'hidden', width: '100%', maxWidth: 700, maxHeight: '85vh', display: 'flex', flexDirection: 'column' }}
+            style={{
+              background: 'var(--bg-panel)',
+              border: '1px solid var(--border-bright)',
+              borderRadius: 10,
+              overflow: 'hidden',
+              width: '100%',
+              maxWidth: 700,
+              maxHeight: '85vh',
+              display: 'flex',
+              flexDirection: 'column',
+            }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+            <div
+              style={{
+                padding: '10px 14px',
+                borderBottom: '1px solid var(--border)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                flexShrink: 0,
+              }}
+            >
               <div style={{ flex: 1, fontSize: 12, fontWeight: 700, color: 'var(--text-primary)' }}>
                 📷 Live Feeds — {cameraTarget.label}
               </div>
-              <button onClick={() => setCameraTarget(null)}
-                style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-secondary)', borderRadius: 4, padding: '3px 10px', cursor: 'pointer', fontSize: 12 }}>
+              <button
+                onClick={() => setCameraTarget(null)}
+                style={{
+                  background: 'var(--bg-card)',
+                  border: '1px solid var(--border)',
+                  color: 'var(--text-secondary)',
+                  borderRadius: 4,
+                  padding: '3px 10px',
+                  cursor: 'pointer',
+                  fontSize: 12,
+                }}
+              >
                 ✕
               </button>
             </div>
             <div style={{ overflowY: 'auto', padding: 12 }}>
-              <CameraPanel lat={cameraTarget.lat} lon={cameraTarget.lon} label={cameraTarget.label} radiusMiles={50} />
+              <CameraPanel
+                lat={cameraTarget.lat}
+                lon={cameraTarget.lon}
+                label={cameraTarget.label}
+                radiusMiles={50}
+              />
             </div>
           </div>
         </div>

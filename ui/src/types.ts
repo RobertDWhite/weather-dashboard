@@ -40,36 +40,36 @@ export interface CurrentConditions {
 
 export interface HourlyPeriod {
   time: string
-  temperature: number
-  dewPoint: number
-  feelsLike: number
-  precipProbability: number
-  precipitation: number
-  weatherCode: number
+  temperature: number | null
+  dewPoint: number | null
+  feelsLike: number | null
+  precipProbability: number | null
+  precipitation: number | null
+  weatherCode: number | null
   condition: string
   icon: string
-  windSpeed: number
-  windDirection: number
-  windGusts: number
-  cloudCover: number
-  visibility: number
+  windSpeed: number | null
+  windDirection: number | null
+  windGusts: number | null
+  cloudCover: number | null
+  visibility: number | null
 }
 
 export interface DailyPeriod {
   date: string
-  tempMax: number
-  tempMin: number
-  feelsMax: number
-  feelsMin: number
-  precipSum: number
-  precipProbability: number
-  windMax: number
-  windGusts: number
-  windDir: number
+  tempMax: number | null
+  tempMin: number | null
+  feelsMax: number | null
+  feelsMin: number | null
+  precipSum: number | null
+  precipProbability: number | null
+  windMax: number | null
+  windGusts: number | null
+  windDir: number | null
   sunrise: string
   sunset: string
-  uvIndex: number
-  weatherCode: number
+  uvIndex: number | null
+  weatherCode: number | null
   condition: string
   icon: string
 }
@@ -109,6 +109,7 @@ export interface NWSAlert {
     status: string
     messageType: string
     senderName: string
+    affectedZones?: string[]
     parameters?: Record<string, string[]>
   }
   geometry: {
@@ -120,6 +121,7 @@ export interface NWSAlert {
 }
 
 export interface NWSAlertsResponse {
+  incomplete?: boolean
   features: NWSAlert[]
   updated: string
   type: string
@@ -521,7 +523,11 @@ export interface BriefingResponse {
   source?: 'ollama' | 'fallback'
   text: string
   model: string
-  context: { alerts_count: number; lsrs_count: number; has_afd: boolean; has_hwo: boolean }
+  context: { alerts_count: number | null; lsrs_count: number | null; has_afd: boolean; has_hwo: boolean }
+  scope?: 'home' | 'nearby'
+  radius_miles?: number
+  sources?: Record<string, 'available' | 'unavailable'>
+  context_checked_at?: number
   generated_at: number
   lat: number
   lon: number

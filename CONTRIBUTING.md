@@ -59,7 +59,11 @@ python3 scripts/serve_review_fixtures.py
 WX_API_URL=http://127.0.0.1:8001 npm --prefix ui run dev -- --host 127.0.0.1 --port 5174
 ```
 
-Open `http://localhost:5174`. This serves **synthetic weather**, labelled “Review fixture,” with transparent radar tiles. It is only for local UI verification. Check Overview and Operations at phone and desktop widths, open the Layers drawer, switch maps with `A`/`R`, and scrub historical replay. Unimplemented fixture endpoints deliberately return 503 so missing data cannot look like clear weather.
+Open `http://localhost:5174`. This serves **synthetic weather**, labelled “Review fixture,” with transparent radar tiles and dates rebased to the current review day. Add `--alerts` to the fixture server command to include two synthetic alerts with long area lists.
+
+Check Overview and Operations at phone and desktop widths, expand a forecast day, change the alert area, save/reapply a layer preset, copy/reopen a shared map URL, switch maps with `A`/`R`, and scrub historical replay. Unimplemented fixture endpoints deliberately return 503 so missing data cannot look like clear weather.
+
+The regression tests include real Leaflet polygon updates at unchanged alert counts, obsolete zone response cancellation, map center preservation on resize, shared-view restoration, preset persistence, DST-aware forecast windows, and explicit AI regeneration and source failures. Forecast timestamps follow the [Open-Meteo time format documentation](https://open-meteo.com/en/docs): hourly Unix instants are displayed with the location's timezone rules; daily labels retain the provider's aggregation dates.
 
 ## Reporting issues
 

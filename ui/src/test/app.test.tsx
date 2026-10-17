@@ -52,6 +52,64 @@ beforeEach(() => {
 })
 
 describe('dashboard workflows', () => {
+  it('keeps incomplete nearby alert coverage from appearing clear', async () => {
+    overrides['/nws/alerts?local=true'] = { type: 'FeatureCollection', features: [], incomplete: true }
+    render(<App />)
+    await screen.findByText('Alert coverage incomplete')
+    expect(screen.getByText(/An all-clear cannot be confirmed/)).toBeTruthy()
+    expect(screen.queryByText(/No active watches or warnings/)).toBeNull()
+  })
+  it('keeps the selected alert area consistent with AI and persists it', async () => {
+    overrides['/briefing/status'] = { ok: true }
+    overrides['/briefing/now'] = {
+      text: 'Scope-matched summary.',
+      model: 'test',
+      source: 'ollama',
+      generated_at: 1700000000,
+      context: { alerts_count: 1, lsrs_count: 0, has_afd: false, has_hwo: false },
+    }
+    render(<App />)
+    await screen.findByTestId('radar-map')
+    fireEvent.click(screen.getByRole('button', { name: 'At home' }))
+    await waitFor(() => expect(calls.some((p) => p.includes('/nws/alerts?local=true&scope=home'))).toBe(true))
+    fireEvent.click(screen.getByRole('button', { name: 'Forecast discussion & AI briefing' }))
+    await screen.findByText('Scope-matched summary.')
+    expect(calls.some((p) => p.includes('/briefing/now?scope=home'))).toBe(true)
+    fireEvent.click(screen.getByRole('button', { name: 'Nearby' }))
+    fireEvent.change(screen.getByRole('combobox', { name: 'Nearby alert radius' }), {
+      target: { value: '50' },
+    })
+    await waitFor(() =>
+      expect(calls.some((p) => p.includes('/briefing/now?scope=nearby&radius_miles=50'))).toBe(true),
+    )
+    expect(calls.some((p) => p.includes('/nws/alerts?local=true&radius_miles=50'))).toBe(true)
+    expect(localStorage.getItem('wx-alert-radius')).toBe('50')
+  })
+  it('restores a shared archive view and shares the Home position consistently', async () => {
+    window.history.replaceState(
+      {},
+      '',
+      '/?map=alerts&lat=40&lon=-85&z=9&at=1700000000&layers=rings,metars&base=street&scope=home&radius=50',
+    )
+    render(<App />)
+    await waitFor(() => expect(screen.getByTestId('alerts-map').textContent).toBe('archive-only'))
+    expect(screen.getByText(/The closest retained snapshot differs/)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Share map' }))
+    const first = new URL((screen.getByRole('textbox', { name: 'Map link' }) as HTMLInputElement).value)
+    expect(first.searchParams.get('lat')).toBe('40.00000')
+    expect(first.searchParams.get('map')).toBe('alerts')
+    expect(first.searchParams.get('at')).toBe('1700000000')
+    expect(first.searchParams.get('base')).toBe('street')
+    fireEvent.click(screen.getByRole('button', { name: 'Home' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Share map' }))
+    const home = new URL((screen.getByRole('textbox', { name: 'Map link' }) as HTMLInputElement).value)
+    expect(Number(home.searchParams.get('lat'))).toBe(fixtures['/config'].lat)
+    expect(Number(home.searchParams.get('lon'))).toBe(fixtures['/config'].lon)
+    expect(home.searchParams.get('z')).toBe('6')
+    expect(new URLSearchParams(window.location.search).get('lat')).toBe(home.searchParams.get('lat'))
+    fireEvent.click(screen.getByRole('button', { name: 'Return to live' }))
+    await waitFor(() => expect(new URLSearchParams(window.location.search).has('at')).toBe(false))
+  })
   it('shows a failed local alert feed as unknown even when the national feed succeeds', async () => {
     failed.add('/nws/alerts?local=true')
     render(<App />)

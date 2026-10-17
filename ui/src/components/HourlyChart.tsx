@@ -1,11 +1,24 @@
 import {
-  ComposedChart, Area, Bar, Line, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, Legend,
+  ComposedChart,
+  Area,
+  Bar,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Legend,
 } from 'recharts'
-import { format, parseISO } from 'date-fns'
+import { localDate, upcomingHours, weatherTime, isReading } from '../weatherTime'
+import { ReferenceLine } from 'recharts'
 import type { HourlyPeriod } from '../types'
 
-interface Props { hourly: HourlyPeriod[] }
+interface Props {
+  hourly: HourlyPeriod[]
+  timezone: string
+  now: number
+}
 
 interface TooltipPayload {
   name: string
@@ -13,51 +26,80 @@ interface TooltipPayload {
   color: string
 }
 
-function CustomTooltip({ active, payload, label }: { active?: boolean; payload?: TooltipPayload[]; label?: string }) {
+function CustomTooltip({
+  active,
+  payload,
+  label,
+  timezone,
+}: {
+  active?: boolean
+  payload?: TooltipPayload[]
+  label?: string
+  timezone: string
+}) {
   if (!active || !payload?.length) return null
   return (
-    <div style={{
-      background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 6,
-      padding: '8px 12px', fontSize: 12,
-    }}>
-      <div style={{ color: 'var(--accent-cyan)', fontWeight: 700, marginBottom: 4 }}>{label}</div>
+    <div
+      style={{
+        background: 'var(--bg-card)',
+        border: '1px solid var(--border)',
+        borderRadius: 6,
+        padding: '8px 12px',
+        fontSize: 12,
+      }}
+    >
+      <div style={{ color: 'var(--accent-cyan)', fontWeight: 700, marginBottom: 4 }}>
+        {label ? weatherTime(label, timezone, true) : ''}
+      </div>
       {payload.map((p) => (
         <div key={p.name} style={{ color: p.color, marginBottom: 2 }}>
-          {p.name}: <strong>{p.value}{p.name === 'Temp' ? '°F' : p.name === 'Precip %' ? '%' : ' mph'}</strong>
+          {p.name}:{' '}
+          <strong>
+            {p.value}
+            {p.name === 'Temp' ? '°F' : p.name === 'Precip %' ? '%' : ' mph'}
+          </strong>
         </div>
       ))}
     </div>
   )
 }
 
-export default function HourlyChart({ hourly }: Props) {
-  if (!hourly.length) return (
-    <div className="card">
-      <div className="card-title">📈 36-Hour Forecast</div>
-      <div style={{ height: 80, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div className="spinner" />
+export default function HourlyChart({ hourly, timezone, now }: Props) {
+  const future = upcomingHours(hourly, now)
+  if (!future.length)
+    return (
+      <div className="card">
+        <div className="card-title">📈 36-Hour Forecast</div>
+        <p className="notice">No upcoming hourly forecast available.</p>
       </div>
-    </div>
-  )
+    )
 
-  const data = hourly.slice(0, 36).map((h) => ({
-    time: format(parseISO(h.time), 'HH:mm'),
-    Temp: Math.round(h.temperature),
+  const data = future.map((h) => ({
+    time: h.time,
+    Temp: isReading(h.temperature) ? Math.round(h.temperature) : null,
     'Precip %': h.precipProbability,
-    Wind: Math.round(h.windSpeed),
+    Wind: isReading(h.windSpeed) ? Math.round(h.windSpeed) : null,
     icon: h.icon,
   }))
 
   return (
     <div className="card">
       <div className="card-title">📈 36-Hour Forecast</div>
-      <ResponsiveContainer width="100%" height={170}>
+      <div className="chart-axis-labels">
+        <span>°F</span>
+        <span>Precip % · Wind mph</span>
+      </div>
+      <ResponsiveContainer width="100%" height={230}>
         <ComposedChart data={data} margin={{ top: 4, right: 10, left: -20, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
           <XAxis
             dataKey="time"
             tick={{ fill: 'var(--text-muted)', fontSize: 12 }}
-            interval={2}
+            interval="preserveStartEnd"
+            minTickGap={24}
+            tickFormatter={(value) =>
+              weatherTime(value, timezone, localDate(value, timezone) !== localDate(now, timezone))
+            }
             tickLine={false}
             axisLine={{ stroke: 'var(--border)' }}
           />
@@ -72,14 +114,39 @@ export default function HourlyChart({ hourly }: Props) {
             yAxisId="pct"
             orientation="right"
             domain={[0, 100]}
+            width={42}
             tick={{ fill: 'var(--text-muted)', fontSize: 12 }}
             tickLine={false}
             axisLine={false}
           />
-          <Tooltip content={<CustomTooltip />} />
-          <Legend
-            wrapperStyle={{ fontSize: 12, color: 'var(--text-secondary)', paddingTop: 4 }}
+          <YAxis
+            yAxisId="wind"
+            orientation="right"
+            width={42}
+            tick={{ fill: 'var(--text-muted)', fontSize: 11 }}
+            domain={[
+              0,
+              (max: number) => (Number.isFinite(max) ? Math.max(20, Math.ceil(max / 10) * 10) : 20),
+            ]}
           />
+          {data
+            .filter((h, i) => i > 0 && localDate(h.time, timezone) !== localDate(data[i - 1].time, timezone))
+            .map((h) => (
+              <ReferenceLine
+                key={h.time}
+                x={h.time}
+                yAxisId="temp"
+                stroke="var(--text-muted)"
+                strokeDasharray="4 4"
+                label={{
+                  value: new Date(h.time).toLocaleDateString([], { timeZone: timezone, weekday: 'short' }),
+                  fill: 'var(--text-secondary)',
+                  position: 'insideTopLeft',
+                }}
+              />
+            ))}
+          <Tooltip content={<CustomTooltip timezone={timezone} />} />
+          <Legend wrapperStyle={{ fontSize: 12, color: 'var(--text-secondary)', paddingTop: 4 }} />
           <Bar yAxisId="pct" dataKey="Precip %" fill="rgba(0,136,204,0.5)" radius={[2, 2, 0, 0]} />
           <Area
             yAxisId="temp"
@@ -91,7 +158,7 @@ export default function HourlyChart({ hourly }: Props) {
             dot={false}
           />
           <Line
-            yAxisId="pct"
+            yAxisId="wind"
             type="monotone"
             dataKey="Wind"
             stroke="#00d4ff"
@@ -101,6 +168,10 @@ export default function HourlyChart({ hourly }: Props) {
           />
         </ComposedChart>
       </ResponsiveContainer>
+      <p className="chart-note">
+        Temperature °F · Precipitation % (right axis) · Wind mph (outer right axis) ·{' '}
+        {timezone.replace(/_/g, ' ')}
+      </p>
     </div>
   )
 }

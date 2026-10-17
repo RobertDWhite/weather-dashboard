@@ -16,6 +16,18 @@ import ToolSection from './components/ToolSection'
 import LayersDrawer from './components/LayersDrawer'
 import StatusFooter from './components/StatusFooter'
 import TimeMachineBar from './components/TimeMachineBar'
+import {
+  initialLayers,
+  readMapLink,
+  mapShareUrl,
+  type MapPosition,
+  type Basemap,
+  type AlertScope,
+  type LayerPreset,
+} from './mapWorkflows'
+import MapPresets from './components/MapPresets'
+import NextHours from './components/NextHours'
+import { useNow } from './hooks/useNow'
 
 const RadarMap = lazy(() => import('./components/RadarMap'))
 const AlertsMap = lazy(() => import('./components/AlertsMap'))
@@ -49,22 +61,6 @@ const MarinePanel = lazy(() => import('./components/MarinePanel'))
 const VerificationPanel = lazy(() => import('./components/VerificationPanel'))
 
 type MapView = 'radar' | 'alerts'
-const initialLayers = {
-  metars: false,
-  cells: false,
-  fires: false,
-  quakes: false,
-  spotters: false,
-  mrms: false,
-  glm: false,
-  ptype: false,
-  probsevere: false,
-  rings: true,
-  reports: false,
-  hazards: false,
-  aprs: false,
-  spc: false,
-}
 type LayerKey = keyof typeof initialLayers
 function saved<T>(key: string, fallback: T): T {
   try {
@@ -76,9 +72,11 @@ function saved<T>(key: string, fallback: T): T {
 const EMPTY_ALERTS: NWSAlert[] = []
 
 export default function App() {
+  const [link] = useState(() => readMapLink(window.location.search))
+  const now = useNow()
   const embed = new URLSearchParams(window.location.search).get('embed')
   const embedded = embed === 'radar' || embed === 'alerts'
-  const [mapView, setMapView] = useState<MapView>(embed === 'alerts' ? 'alerts' : 'radar')
+  const [mapView, setMapView] = useState<MapView>(embed === 'alerts' ? 'alerts' : (link.view ?? 'radar'))
   const switchView = useCallback((view: MapView) => setMapView(view), [])
   const mapRef = useRef<LeafletMap | null>(null)
   const mapRegion = useRef<HTMLElement | null>(null)
@@ -87,23 +85,44 @@ export default function App() {
   const [layers, setLayers] = useState(() => ({
     ...initialLayers,
     ...saved<Partial<typeof initialLayers>>('wx-layers', {}),
+    ...link.layers,
   }))
   const toggleLayer = (key: LayerKey) => setLayers((s) => ({ ...s, [key]: !s[key] }))
-  const [basemap, setBasemap] = useState<'dark' | 'street' | 'satellite'>('dark')
+  const [basemap, setBasemap] = useState<Basemap>(() => link.basemap ?? saved('wx-basemap', 'dark'))
+  const [mapPosition, setMapPosition] = useState<MapPosition | null>(link.position)
+  const [shareLink, setShareLink] = useState('')
+  const [shareMessage, setShareMessage] = useState('')
+  const [sharedView, setSharedView] = useState(!!(link.position || link.view || link.timestamp))
+  const [alertScope, setAlertScope] = useState<AlertScope>(
+    () => link.scope ?? saved('wx-alert-scope', 'nearby'),
+  )
+  const [alertRadius, setAlertRadius] = useState(() => link.radius ?? saved('wx-alert-radius', 75))
+  const scopeLabel = alertScope === 'home' ? 'At home' : `Nearby · ${alertRadius} miles`
+  const onPositionChange = useCallback(
+    (position: MapPosition) =>
+      setMapPosition((old) =>
+        old?.lat === position.lat && old?.lon === position.lon && old?.zoom === position.zoom
+          ? old
+          : position,
+      ),
+    [],
+  )
   const [layersOpen, setLayersOpen] = useState(false)
   const [drawer, setDrawer] = useState<{ alerts: NWSAlert[]; id?: string; archived?: boolean } | null>(null)
-  const [nexradOn, setNexradOn] = useState(false)
-  const [nexradSite, setNexradSite] = useState('')
-  const [nexradProduct, setNexradProduct] = useState('N0Q')
+  const [nexradOn, setNexradOn] = useState(!!link.nexradSite)
+  const [nexradSite, setNexradSite] = useState(link.nexradSite)
+  const [nexradProduct, setNexradProduct] = useState(link.nexradProduct)
   const [nexradCoords, setNexradCoords] = useState<{ lat: number; lon: number } | null>(null)
   const [radarTick, setRadarTick] = useState(Date.now())
-  const [timeMachineTs, setTimeMachineTs] = useState<number | null>(null)
+  const [timeMachineTs, setTimeMachineTs] = useState<number | null>(link.timestamp)
   const replay = timeMachineTs !== null
   const config = useFeed('config', api.fetchConfig, { interval: 300_000 })
   const current = useFeed('current', api.fetchCurrent)
   const forecast = useFeed('forecast', api.fetchForecast, { interval: 300_000 })
   const alerts = useFeed('national-alerts', api.fetchAlerts)
-  const localAlerts = useFeed('local-alerts', api.fetchLocalAlerts)
+  const localAlerts = useFeed(`local-alerts:${alertScope}:${alertRadius}`, (signal) =>
+    api.fetchLocalAlerts(signal, alertScope, alertRadius),
+  )
   const [summaryOpen, setSummaryOpen] = useState(false)
   const extra = operations || summaryOpen
   const reports = useFeed('reports', api.fetchStormReports, { enabled: extra || layers.reports })
@@ -113,6 +132,19 @@ export default function App() {
   const mesoscales = useFeed('mesoscales', api.fetchMesoscale, { enabled: extra || layers.hazards })
   const lsrs = useFeed('lsrs', (s) => api.fetchLsrs(2, s), { enabled: extra || layers.reports })
   const homeCenter: [number, number] = [config.data?.lat ?? 39.5, config.data?.lon ?? -98.5]
+  const radarSites = useFeed(
+    `radar-sites:${homeCenter}`,
+    (signal) => api.fetchNexradSites(homeCenter[0], homeCenter[1], signal),
+    { enabled: nexradOn && !replay, interval: 3_600_000 },
+  )
+  useEffect(() => {
+    if (!radarSites.data) return
+    const site = nexradSite
+      ? radarSites.data.sites.find((s) => s.id === nexradSite)
+      : radarSites.data.sites[0]
+    setNexradCoords(site ? { lat: site.lat, lon: site.lon } : null)
+    if (!nexradSite && site) setNexradSite(site.id)
+  }, [radarSites.data, nexradSite])
   const metars = useFeed(
     `metars:${homeCenter}`,
     (s) => api.fetchMetarMesh({ lat: homeCenter[0], lon: homeCenter[1], radius_km: 350, limit: 120 }, s),
@@ -216,12 +248,15 @@ export default function App() {
   useEffect(() => {
     try {
       localStorage.setItem('wx-layers', JSON.stringify(layers))
+      localStorage.setItem('wx-basemap', JSON.stringify(basemap))
+      localStorage.setItem('wx-alert-scope', JSON.stringify(alertScope))
+      localStorage.setItem('wx-alert-radius', JSON.stringify(alertRadius))
       localStorage.setItem('wx-operations', JSON.stringify(operations))
       localStorage.setItem('wx-tv-mode', JSON.stringify(tvMode))
     } catch {
       /* storage unavailable */
     }
-  }, [layers, operations, tvMode])
+  }, [layers, operations, tvMode, basemap, alertScope, alertRadius])
   useEffect(() => {
     document.body.classList.toggle('tv-mode', tvMode)
     return () => document.body.classList.remove('tv-mode')
@@ -277,7 +312,81 @@ export default function App() {
       (mapView === 'alerts' && ['mrms', 'glm', 'ptype', 'probsevere', 'spc'].includes(id)),
     toggle: () => toggleLayer(id),
   }))
+  const applyPreset = (preset: LayerPreset) => {
+    setLayers({ ...preset.layers })
+    setBasemap(preset.basemap)
+    setNexradOn(preset.nexradOn)
+    setNexradSite(preset.nexradSite)
+    setNexradProduct(preset.nexradProduct)
+    setNexradCoords(preset.nexradCoords)
+    switchView('radar')
+  }
+  useEffect(() => {
+    if (!sharedView || embedded || (!mapPosition && !config.data)) return
+    const position = mapPosition ?? { lat: homeCenter[0], lon: homeCenter[1], zoom: 6 }
+    const url = mapShareUrl(window.location.href, {
+      position,
+      view: mapView,
+      layers,
+      basemap,
+      timestamp: timeMachineTs,
+      scope: alertScope,
+      radius: alertRadius,
+      nexradOn,
+      nexradSite,
+      nexradProduct,
+    })
+    if (window.location.href !== url) window.history.replaceState(null, '', url)
+    if (shareLink && shareLink !== url) {
+      setShareLink(url)
+      setShareMessage('View updated. Use Share map to copy this link.')
+    }
+  }, [
+    sharedView,
+    embedded,
+    mapPosition,
+    config.data,
+    mapView,
+    layers,
+    basemap,
+    timeMachineTs,
+    alertScope,
+    alertRadius,
+    nexradOn,
+    nexradSite,
+    nexradProduct,
+    shareLink,
+  ])
+  const shareMap = async () => {
+    const c = mapRef.current?.getCenter()
+    const position = c
+      ? { lat: c.lat, lon: c.lng, zoom: mapRef.current!.getZoom() }
+      : (mapPosition ?? { lat: homeCenter[0], lon: homeCenter[1], zoom: 6 })
+    setMapPosition(position)
+    setSharedView(true)
+    const url = mapShareUrl(window.location.href, {
+      position,
+      view: mapView,
+      layers,
+      basemap,
+      timestamp: timeMachineTs,
+      scope: alertScope,
+      radius: alertRadius,
+      nexradOn,
+      nexradSite,
+      nexradProduct,
+    })
+    setShareLink(url)
+    try {
+      await navigator.clipboard.writeText(url)
+      setShareMessage('Map link copied.')
+    } catch {
+      setShareMessage('Copy the map link below.')
+    }
+  }
   const sharedMap = {
+    position: mapPosition,
+    onPositionChange,
     mapRef,
     alerts: mapAlerts,
     reports: !replay && layers.reports ? reports.data : null,
@@ -320,6 +429,10 @@ export default function App() {
               </button>
             ))}
           </div>
+          <button onClick={() => setMapPosition({ lat: homeCenter[0], lon: homeCenter[1], zoom: 6 })}>
+            Home
+          </button>
+          <button onClick={shareMap}>Share map</button>
           <button aria-haspopup="dialog" onClick={() => setLayersOpen(true)}>
             Layers · {options.filter((o) => o.checked && !o.disabled).length + (nexradOn && !replay ? 1 : 0)}
           </button>
@@ -332,22 +445,56 @@ export default function App() {
             : `Enabled: ${['NWS alerts', ...options.filter((o) => o.checked && !o.disabled).map((o) => o.label), ...(nexradOn ? ['NEXRAD'] : [])].join(' · ')}`}
         </div>
       )}
+      {shareLink && (
+        <div className="map-share">
+          <p role="status">{shareMessage}</p>
+          <label>
+            Map link
+            <input readOnly value={shareLink} onFocus={(e) => e.target.select()} />
+          </label>
+          <button
+            onClick={() => {
+              setShareLink('')
+              setShareMessage('')
+            }}
+          >
+            Close link
+          </button>
+        </div>
+      )}
       <FeedStatus feed={replay ? snapshot : alerts} name={replay ? 'Archive' : 'Map alerts'} />
+      {nexradOn && !replay && (
+        <>
+          <FeedStatus feed={radarSites} name="NEXRAD station" />
+          {radarSites.data && !nexradCoords && (
+            <p className="notice">
+              Radar station {nexradSite || 'selection'} is unavailable. Choose a station in Layers.
+            </p>
+          )}
+        </>
+      )}
       {replay && (
         <div className="replay-notice" role="status">
           <strong>
             REPLAY · {new Date((snapshot.data?.snapshot_ts ?? timeMachineTs!) * 1000).toLocaleString()}
           </strong>
           <span>
-            Requested {new Date(timeMachineTs! * 1000).toLocaleTimeString()}. Live overlays paused; local
-            alerts and forecasts elsewhere remain live.
+            Requested {new Date(timeMachineTs! * 1000).toLocaleString()}. Live overlays paused; local alerts
+            and forecasts elsewhere remain live.
           </span>
+          {snapshot.data && Math.abs(snapshot.data.snapshot_ts - timeMachineTs!) > 300 && (
+            <span>
+              The closest retained snapshot differs from the requested time. Older history may have expired.
+            </span>
+          )}
           <button onClick={() => setTimeMachineTs(null)}>Return to live</button>
         </div>
       )}
       <div className="map-canvas">
         <Suspense fallback={<p role="status">Loading map…</p>}>
-          {mapView === 'radar' ? (
+          {config.status === 'loading' ? (
+            <p role="status">Loading map location…</p>
+          ) : mapView === 'radar' ? (
             <RadarMap
               {...sharedMap}
               center={homeCenter}
@@ -360,7 +507,7 @@ export default function App() {
               showSpc={!replay && layers.spc}
             />
           ) : (
-            <AlertsMap {...sharedMap} homeCenter={homeCenter} />
+            <AlertsMap {...sharedMap} homeCenter={homeCenter} basemap={basemap} />
           )}
         </Suspense>
       </div>
@@ -410,15 +557,60 @@ export default function App() {
             Skip to main content
           </a>
           <WeatherHeader
-            location={config.data?.location ?? 'Location unavailable'}
+            location={`${config.data?.location ?? 'Location unavailable'} · ${scopeLabel}`}
             lastUpdate={localAlerts.lastSuccess === null ? null : new Date(localAlerts.lastSuccess)}
             alertCount={liveAlerts.length}
             alertStatus={localAlerts.status}
+            coverageIncomplete={localAlerts.data?.incomplete}
             onAlertsClick={() => openLiveDrawer()}
           />
           {!tvMode && (
             <nav className="workspace-toolbar" aria-label="Dashboard layout">
-              <span>Local weather</span>
+              <label className="mobile-scope">
+                Area
+                <select
+                  aria-label="Alert area"
+                  value={alertScope === 'home' ? 'home' : String(alertRadius)}
+                  onChange={(e) => {
+                    if (e.target.value === 'home') setAlertScope('home')
+                    else {
+                      setAlertScope('nearby')
+                      setAlertRadius(Number(e.target.value))
+                    }
+                  }}
+                >
+                  <option value="home">At home</option>
+                  {[25, 50, 75, 100, 150, 250].map((r) => (
+                    <option key={r} value={r}>
+                      Nearby · {r} mi
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <div className="scope-controls" role="group" aria-label="Alert area">
+                <button aria-pressed={alertScope === 'home'} onClick={() => setAlertScope('home')}>
+                  At home
+                </button>
+                <button aria-pressed={alertScope === 'nearby'} onClick={() => setAlertScope('nearby')}>
+                  Nearby
+                </button>
+                {alertScope === 'nearby' && (
+                  <label>
+                    Radius
+                    <select
+                      aria-label="Nearby alert radius"
+                      value={alertRadius}
+                      onChange={(e) => setAlertRadius(Number(e.target.value))}
+                    >
+                      {[25, 50, 75, 100, 150, 250].map((r) => (
+                        <option key={r} value={r}>
+                          {r} miles
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+              </div>
               <div role="group" aria-label="Workspace">
                 <button aria-pressed={!operations} onClick={() => setOperations(false)}>
                   Overview
@@ -445,6 +637,10 @@ export default function App() {
               <FeedPanel feed={localAlerts} name="Live local alerts" allowStale={false}>
                 {() => (
                   <AlertPanel
+                    incomplete={localAlerts.data?.incomplete}
+                    title={`${scopeLabel} alerts`}
+                    compact={!operations}
+                    timezone={forecast.data?.timezone ?? current.data?.timezone ?? 'UTC'}
                     alerts={rankedAlerts}
                     onLocate={flyTo}
                     onOpenDrawer={(id) => openLiveDrawer(id)}
@@ -457,17 +653,20 @@ export default function App() {
                 </p>
               )}
               <FeedPanel feed={current} name="Current conditions">
-                {(d) => <CurrentConditions data={d} />}
+                {(d) => <CurrentConditions data={d} compact={!operations} />}
               </FeedPanel>
+              {forecast.data && (
+                <NextHours hourly={forecast.data.hourly} timezone={forecast.data.timezone} now={now} />
+              )}
             </div>
             <div className="forecast-panel">
               <FeedPanel feed={forecast} name="Local forecast">
                 {(d) => (
                   <>
                     <Suspense fallback={<p role="status">Loading hourly chart…</p>}>
-                      <HourlyChart hourly={d.hourly} />
+                      <HourlyChart hourly={d.hourly} timezone={d.timezone} now={now} />
                     </Suspense>
-                    <Forecast daily={d.daily} />
+                    <Forecast daily={d.daily} hourly={d.hourly} timezone={d.timezone} now={now} />
                   </>
                 )}
               </FeedPanel>
@@ -543,7 +742,7 @@ export default function App() {
               </ToolSection>
               <ToolSection title="Forecast discussion & AI briefing">
                 <NwsTextPanel homeLat={homeCenter[0]} homeLon={homeCenter[1]} />
-                <BriefingPanel />
+                <BriefingPanel scope={alertScope} radius={alertRadius} />
               </ToolSection>
               <ToolSection title="Aviation">
                 <AviationPanel homeLat={homeCenter[0]} homeLon={homeCenter[1]} onLocate={flyTo} />
@@ -612,14 +811,24 @@ export default function App() {
       )}
       <Suspense fallback={<p role="status">Loading controls…</p>}>
         {layersOpen && (
-          <LayersDrawer options={options} replay={replay} onClose={() => setLayersOpen(false)}>
+          <LayersDrawer
+            options={options}
+            replay={replay}
+            onClose={() => setLayersOpen(false)}
+            presets={
+              <MapPresets
+                current={{ layers, basemap, nexradOn, nexradSite, nexradProduct, nexradCoords }}
+                onApply={applyPreset}
+                replay={replay}
+              />
+            }
+          >
             <label className="layer-option">
               Basemap
               <select
                 aria-label="Basemap"
                 value={basemap}
                 onChange={(e) => setBasemap(e.target.value as typeof basemap)}
-                disabled={mapView !== 'radar'}
               >
                 <option value="dark">Dark</option>
                 <option value="street">Street</option>
@@ -627,7 +836,8 @@ export default function App() {
               </select>
             </label>
             <p className="notice">
-              Composite radar, satellite overlays, and basemap selection are available in Radar view.
+              MRMS, lightning, precipitation type, storm probability, and SPC outlook are available in Radar
+              view. Basemaps apply to both maps.
             </p>
             <NexradPicker
               enabled={nexradOn}
@@ -647,7 +857,7 @@ export default function App() {
         )}
         {drawer && (
           <AlertsDrawer
-            title={drawer.archived ? 'Archived national alerts' : 'Live local alerts'}
+            title={drawer.archived ? 'Archived national alerts' : `${scopeLabel} alerts`}
             alerts={drawer.archived ? drawer.alerts : liveAlerts}
             focusAlertId={drawer.id}
             onLocate={flyTo}

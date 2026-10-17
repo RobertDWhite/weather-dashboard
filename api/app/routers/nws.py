@@ -14,6 +14,7 @@ _hourly_cache: TTLCache = TTLCache(maxsize=200, ttl=900)
 _obs_cache: TTLCache = TTLCache(maxsize=200, ttl=300)
 _zone_cache: TTLCache = TTLCache(maxsize=4000, ttl=86400)  # zones rarely change
 _local_alerts_cache: TTLCache = TTLCache(maxsize=32, ttl=60)
+_home_alerts_cache: TTLCache = TTLCache(maxsize=32, ttl=60)
 
 HEADERS = {
     "User-Agent": settings.nws_user_agent,
@@ -110,6 +111,7 @@ async def _local_alerts(data: dict, lat: float, lon: float, radius_miles: float)
         if (zone_path := zone.split("/zones/", 1)[-1] if "/zones/" in zone else None)
     }
 
+    incomplete = any(not (f.get("properties") or {}).get("affectedZones") for f in unresolved)
     if zone_paths:
         async with httpx.AsyncClient(timeout=15, follow_redirects=True) as client:
             sem = asyncio.Semaphore(12)
@@ -120,12 +122,13 @@ async def _local_alerts(data: dict, lat: float, lon: float, radius_miles: float)
             path for path, geometry in resolved
             if _geometry_is_local(geometry, lat, lon, radius_miles)
         }
+        incomplete = incomplete or len(zone_paths) > len(resolved) or any(geometry is None for _, geometry in resolved)
         for feature in unresolved:
             zones = (feature.get("properties") or {}).get("affectedZones") or []
             if any(zone.split("/zones/", 1)[-1] in local_zone_paths for zone in zones if "/zones/" in zone):
                 local_features.append(feature)
 
-    result = {**data, "features": local_features, "local": True,
+    result = {**data, "features": local_features, "local": True, "incomplete": incomplete,
               "observer": {"lat": lat, "lon": lon, "radius_miles": radius_miles}}
     _local_alerts_cache[cache_key] = result
     return result
@@ -138,11 +141,36 @@ async def get_alerts(
     lat: float | None = Query(None),
     lon: float | None = Query(None),
     radius_miles: float = Query(75, ge=1, le=250),
+    scope: str = Query("nearby", pattern="^(home|nearby)$"),
 ):
     """Active NWS alerts. With dedupe=true (default), VTEC event-tracking
     numbers collapse NEW/CON/UPG sequences to a single entry per event."""
     from app.metrics import active_alerts, cache_hits, cache_misses, upstream_requests
     from app import vtec as vtec_mod
+
+    if local and scope == "home":
+        observer_lat = lat if lat is not None else settings.observer_lat
+        observer_lon = lon if lon is not None else settings.observer_lon
+        key = f"{observer_lat:.4f},{observer_lon:.4f}:{dedupe}"
+        if key in _home_alerts_cache:
+            return _home_alerts_cache[key]
+        try:
+            async with httpx.AsyncClient(timeout=15, follow_redirects=True) as client:
+                response = await client.get(
+                    "https://api.weather.gov/alerts/active",
+                    params={"point": f"{observer_lat},{observer_lon}", "status": "actual", "message_type": "alert"},
+                    headers=HEADERS,
+                )
+                response.raise_for_status()
+                data = response.json()
+                if not isinstance(data.get("features"), list):
+                    raise ValueError("NWS returned no alert collection")
+            result = {**data, "features": vtec_mod.dedupe(data["features"]) if dedupe else data["features"],
+                      "local": True, "scope": "home", "observer": {"lat": observer_lat, "lon": observer_lon}}
+            _home_alerts_cache[key] = result
+            return result
+        except Exception as exc:
+            raise HTTPException(status_code=502, detail=f"At-home alerts unavailable: {exc}")
 
     cache_key = "data:dedupe" if dedupe else "data"
     if cache_key in _alerts_cache:

@@ -11,8 +11,12 @@ Built around the US National Weather Service `api.weather.gov`, NOAA SPC, Aviati
 ## Features
 
 - **Overview and Operations layouts** — local essentials first, expandable specialist tools, a grouped Layers drawer, and separate radar playback controls. Layout and layer choices persist locally.
+- **At home or nearby** — choose exact-location NWS alerts or a nearby radius. The alert list and AI briefing use the same selection. Incomplete area coverage stays visibly unknown.
+- **Forecast exploration** — the next 36 hours start with the current hour in the location's timezone. Day boundaries and separate temperature, precipitation, and wind scales help comparison. Expand a day for hourly conditions, rain timing and amounts, gusts, and the 6 PM–9 AM overnight low; a short next-12-hours summary sits by current conditions.
+- **Saved map workflows** — apply built-in or locally saved layer presets, return Home from either map, or use Share map to copy a URL containing position, zoom, map view, layers, basemap, alert scope, and replay time. Replay links use the nearest retained snapshot and identify expired history. Presets are saved on the current browser; URLs carry the shared view.
 - **Feed status** — independent requests, explicit loading/unavailable/stale states, last successful update times, and retries. Failed local alert checks never display an all-clear.
 - **Historical replay** — archived national alerts and storm reports share a snapshot. Other live overlays pause; local warning notifications continue using fresh live alerts. Radar identifies its nearest available frame, whose coverage can be shorter than the archive.
+- **AI context and regeneration** — unavailable sources are identified, missing alert coverage cannot produce an all-clear, and Regenerate briefing bypasses the cache. Generation and retrieval times are shown separately.
 - **River stages** — USGS observations classified against matching NOAA NWPS station thresholds. Missing thresholds or stale observations show unknown status.
 - **Active alerts** — NWS warnings/watches/advisories with VTEC parsing, severity coloring, polygon overlays, and an emergency banner that announces tornado emergencies via screen reader.
 - **Radar** — NOAA NEXRAD per-site (5 products), MRMS composite, RainViewer animated, NOAA GeoServer WMS overlays, time-machine playback.

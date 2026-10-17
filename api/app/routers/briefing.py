@@ -10,6 +10,7 @@ alerts and want the most-actionable ones to the top of the panel.
 Designed to be glanceable for kiosk / TV mode and useful as a stream chyron.
 Cached 10 min so we don't pound Ollama every refresh."""
 import asyncio
+import hashlib
 import json as _json
 import re as _re
 import time as _time
@@ -29,52 +30,16 @@ _cache: TTLCache = TTLCache(maxsize=16, ttl=3600)
 
 
 def _fingerprint(ctx: dict) -> str:
-    """A stable, coarse signature of the alert context. The briefing is keyed
-    on this so identical contexts return the same cached text — pure page
-    refreshes don't trigger regeneration. Recomputes when something material
-    changes: a new urgent event type, a different count tier, or a new
-    tornado-emergency/PDS situation appears."""
-    alerts = ctx.get("alerts") or []
-    # Count alerts by event type
-    by_event: dict[str, int] = {}
-    has_emergency = False
-    has_pds = False
-    for a in alerts:
-        ev = (a.get("event") or "").strip()
-        hl = (a.get("headline") or "").lower()
-        by_event[ev] = by_event.get(ev, 0) + 1
-        if "emergency" in ev.lower() or "emergency" in hl:
-            has_emergency = True
-        if "particularly dangerous" in hl or "pds" in hl:
-            has_pds = True
-
-    # Coarsen counts so adding 1 alert in the same bucket doesn't churn the
-    # fingerprint: bucket sizes 0,1,2-5,6-15,16-50,50+
-    def _bucket(n: int) -> str:
-        if n <= 0: return "0"
-        if n == 1: return "1"
-        if n <= 5: return "2-5"
-        if n <= 15: return "6-15"
-        if n <= 50: return "16-50"
-        return "50+"
-
-    parts = sorted(f"{ev}:{_bucket(n)}" for ev, n in by_event.items())
-    if has_emergency:
-        parts.append("EMERGENCY")
-    if has_pds:
-        parts.append("PDS")
-    # LSR tornado count (sub-bucketed) — a new tornado report should re-brief
-    lsrs = ctx.get("lsrs") or []
-    tor_lsrs = sum(1 for r in lsrs if "TORNADO" in (r.get("type") or "").upper())
-    parts.append(f"lsrtor:{_bucket(tor_lsrs)}")
-    return "|".join(parts) or "quiet"
+    """Invalidate when source availability, alert revisions, or forecast text changes."""
+    content = {k: v for k, v in ctx.items() if k != "checked_at"}
+    return hashlib.sha256(_json.dumps(content, sort_keys=True, default=str).encode()).hexdigest()[:24]
 
 
 SYSTEM_PROMPT = """You are an operational meteorologist writing a brief summary for a
-weather operations dashboard. Style: terse, factual, no fluff, no caveats, no
+weather operations dashboard. Style: terse, factual, no fluff, no
 greetings. Plain sentences. Lead with the highest-impact threat. Mention specific
 watch/warning types, areas, and timing where given. If nothing severe is active,
-state that conditions are quiet and what to keep an eye on. Maximum 60 words. Output
+describe only the available forecast. Never infer an all-clear from unavailable sources. Explicitly identify unavailable sources and do not invent their contents. Maximum 60 words. Output
 plain text only — no markdown headers, no bullets, no lists."""
 
 
@@ -83,8 +48,15 @@ def _user_prompt(ctx: dict) -> str:
 
     parts.append(f"Location: {ctx.get('location', 'unknown')}.")
 
+    scope = ctx.get("scope", "nearby")
+    parts.append("Alert scope: " + ("at the home location" if scope == "home" else f"within {ctx.get('radius_miles', 75)} miles of home") + ".")
+    for name, status in ctx.get("sources", {}).items():
+        if status != "available":
+            parts.append(f"UNAVAILABLE source: {name}. Its contents and absence of threats are unknown.")
     alerts = ctx.get("alerts", [])
-    if alerts:
+    if ctx.get("sources", {}).get("alerts") == "unavailable":
+        parts.append("NWS alert status is unknown. Do not claim there are no alerts or threats.")
+    elif alerts:
         # Group by event for compactness
         by_event: dict[str, list[str]] = {}
         for a in alerts[:30]:
@@ -95,7 +67,7 @@ def _user_prompt(ctx: dict) -> str:
         for ev, areas in by_event.items():
             parts.append(f"  - {ev} for {len(areas)} area(s): {areas[0]}")
     else:
-        parts.append("No active NWS alerts at this point.")
+        parts.append("No active NWS alerts returned for the selected scope.")
 
     lsrs = ctx.get("lsrs", [])
     if lsrs:
@@ -122,66 +94,63 @@ def _user_prompt(ctx: dict) -> str:
     return "\n".join(parts)
 
 
-async def _gather_context(client: httpx.AsyncClient, lat: float, lon: float) -> dict:
-    """Pull together the dashboard's current state. We re-fetch source data
-    rather than coupling to other in-process state so this endpoint works
-    even before the UI has loaded."""
-    ctx: dict = {"location": settings.observer_location}
+async def _gather_context(client: httpx.AsyncClient, lat: float, lon: float,
+                          scope: str = "nearby", radius_miles: float = 75) -> dict:
+    from app.routers.nws import get_alerts
 
-    async def _try_json(url: str, *, headers: dict | None = None):
+    ctx: dict = {"location": settings.observer_location, "scope": scope, "radius_miles": radius_miles,
+                 "sources": {}, "checked_at": _time.time()}
+
+    async def load_alerts():
         try:
-            r = await client.get(url, headers=headers or _HEADERS, timeout=10)
-            if r.status_code == 200:
-                return r.json()
+            payload = await get_alerts(dedupe=True, local=True, lat=lat, lon=lon,
+                                       radius_miles=radius_miles, scope=scope)
+            if not isinstance(payload.get("features"), list):
+                raise ValueError("Missing alert collection")
+            ctx["alerts"] = [(f.get("properties") or {}) for f in payload["features"] if isinstance(f, dict)]
+            ctx["sources"]["alerts"] = "unavailable" if payload.get("incomplete") else "available"
         except Exception:
-            return None
-        return None
+            ctx["alerts"] = []
+            ctx["sources"]["alerts"] = "unavailable"
 
-    # Active alerts at our point
-    alerts_payload = await _try_json(
-        f"https://api.weather.gov/alerts/active?point={lat},{lon}",
+    async def load(name, url):
+        try:
+            r = await client.get(url, headers=_HEADERS, timeout=10)
+            r.raise_for_status()
+            value = r.json()
+            if name == "lsrs":
+                if not isinstance(value.get("features"), list):
+                    raise ValueError("Missing report collection")
+                items = []
+                # Match the selected geographic scope instead of mixing in national reports.
+                from app.routers.nws import _haversine_miles
+                for feature in value["features"]:
+                    geo = feature.get("geometry") or {}
+                    coords = geo.get("coordinates") or []
+                    if geo.get("type") != "Point" or len(coords) < 2:
+                        continue
+                    if _haversine_miles(lat, lon, coords[1], coords[0]) > (radius_miles if scope == "nearby" else 1):
+                        continue
+                    p = feature.get("properties") or {}
+                    items.append({"type": p.get("type"), "city": p.get("city"),
+                                  "state": p.get("st") or p.get("state"), "remark": p.get("remark"),
+                                  "valid": p.get("valid")})
+                ctx["lsrs"] = items[:25]
+            else:
+                text = value.get("stripped_text") or value.get("text")
+                if not isinstance(text, str) or not text.strip():
+                    raise ValueError("Missing text product")
+                ctx[f"{name}_text"] = text
+            ctx["sources"][name] = "available"
+        except Exception:
+            ctx["sources"][name] = "unavailable"
+
+    await asyncio.gather(
+        load_alerts(),
+        load("lsrs", "https://mesonet.agron.iastate.edu/geojson/lsr.geojson?hours=2"),
+        load("afd", f"http://localhost:8000/text/afd?lat={lat}&lon={lon}"),
+        load("hwo", f"http://localhost:8000/text/hwo?lat={lat}&lon={lon}"),
     )
-    if alerts_payload and isinstance(alerts_payload.get("features"), list):
-        ctx["alerts"] = [
-            (f.get("properties") or {})
-            for f in alerts_payload["features"]
-            if isinstance(f, dict)
-        ]
-    else:
-        ctx["alerts"] = []
-
-    # LSRs (last 2h) + SPC reports today (server-local cache hit)
-    lsr = await _try_json("https://mesonet.agron.iastate.edu/geojson/lsr.geojson?hours=2")
-    if lsr:
-        items: list[dict] = []
-        for f in (lsr.get("features") or []):
-            p = (f.get("properties") or {})
-            items.append({
-                "type": p.get("type"),
-                "city": p.get("city"),
-                "state": p.get("st") or p.get("state"),
-                "remark": p.get("remark"),
-            })
-        ctx["lsrs"] = items[:25]
-        # Crude category counts
-        cats: dict[str, int] = {}
-        for it in items:
-            t = (it.get("type") or "").upper()
-            if "TORNADO" in t: cats["tornado"] = cats.get("tornado", 0) + 1
-            elif "HAIL" in t: cats["hail"] = cats.get("hail", 0) + 1
-            elif "WND" in t or "WIND" in t: cats["wind"] = cats.get("wind", 0) + 1
-            elif "FLOOD" in t: cats["flood"] = cats.get("flood", 0) + 1
-        ctx["lsr_by_category"] = cats
-
-    # Local AFD + HWO via our own /text endpoints (avoids re-implementing WFO lookup)
-    base = "http://localhost:8000"  # in-process call to ourselves
-    afd = await _try_json(f"{base}/text/afd?lat={lat}&lon={lon}")
-    if afd:
-        ctx["afd_text"] = afd.get("stripped_text") or afd.get("text") or ""
-    hwo = await _try_json(f"{base}/text/hwo?lat={lat}&lon={lon}")
-    if hwo:
-        ctx["hwo_text"] = hwo.get("stripped_text") or hwo.get("text") or ""
-
     return ctx
 
 
@@ -251,6 +220,8 @@ async def briefing_now(
     lat: float | None = Query(None),
     lon: float | None = Query(None),
     refresh: bool = Query(False, description="bypass cache and regenerate"),
+    scope: str = Query("nearby", pattern="^(home|nearby)$"),
+    radius_miles: float = Query(75, ge=1, le=250),
 ):
     """Generate (or return cached) plain-English briefing of the current
     weather situation. Cached up to 1h, but transparently invalidated when
@@ -267,7 +238,7 @@ async def briefing_now(
     # so this isn't a real per-request cost.
     async with httpx.AsyncClient(timeout=15) as client:
         try:
-            ctx = await _gather_context(client, lat, lon)
+            ctx = await _gather_context(client, lat, lon, scope, radius_miles)
         except Exception as e:
             raise HTTPException(status_code=502, detail=f"context gather failed: {e}")
 
@@ -298,7 +269,11 @@ async def _generate_briefing(ctx: dict, lat: float, lon: float, fp: str, cache_k
     prompt = _user_prompt(ctx)
     source = "ollama"
     try:
-        text = await _ask_ollama(prompt)
+        if ctx.get("sources", {}).get("alerts") == "unavailable":
+            text = _fallback_summary(ctx)
+            source = "fallback"
+        else:
+            text = await _ask_ollama(prompt)
     except Exception as e:
         # Graceful fallback: deterministic summary built from the context alone
         text = _fallback_summary(ctx) + f"  (AI offline: {str(e)[:80]})"
@@ -312,11 +287,15 @@ async def _generate_briefing(ctx: dict, lat: float, lon: float, fp: str, cache_k
         "source": source,
         "model": _resolved_model[0] or settings.ollama_model,
         "context": {
-            "alerts_count": len(ctx.get("alerts", [])),
-            "lsrs_count": len(ctx.get("lsrs", [])),
+            "alerts_count": None if ctx.get("sources", {}).get("alerts") == "unavailable" else len(ctx.get("alerts", [])),
+            "lsrs_count": None if ctx.get("sources", {}).get("lsrs") == "unavailable" else len(ctx.get("lsrs", [])),
             "has_afd": bool(ctx.get("afd_text")),
             "has_hwo": bool(ctx.get("hwo_text")),
         },
+        "scope": ctx.get("scope", "nearby"),
+        "radius_miles": ctx.get("radius_miles", 75),
+        "sources": ctx.get("sources", {}),
+        "context_checked_at": ctx.get("checked_at"),
         "fingerprint": fp,
         "generated_at": _time.time(),
         "cache_ttl_sec": int(_cache.ttl),
@@ -331,9 +310,13 @@ async def _generate_briefing(ctx: dict, lat: float, lon: float, fp: str, cache_k
 
 def _fallback_summary(ctx: dict) -> str:
     """Deterministic 1-sentence summary if Ollama is unreachable."""
+    if ctx.get("sources", {}).get("alerts") == "unavailable":
+        alerts = ctx.get("alerts") or []
+        known = f" At least {len(alerts)} alert(s) were verified: {', '.join(sorted({a.get('event') or 'alert' for a in alerts}))}." if alerts else ""
+        return "NWS alert coverage is unavailable or incomplete for the selected area." + known + " Additional alert status is unknown; an all-clear cannot be confirmed."
     alerts = ctx.get("alerts", [])
     if not alerts:
-        return f"No active NWS alerts for {ctx.get('location', 'the area')}. Conditions are quiet."
+        return f"No active NWS alerts for {ctx.get('location', 'the area')}. Other weather threats are not assessed by this basic summary."
     events = sorted({a.get("event") or "alert" for a in alerts})
     return (
         f"{len(alerts)} active NWS alert(s) for {ctx.get('location', 'the area')}: "

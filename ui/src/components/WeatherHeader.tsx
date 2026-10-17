@@ -6,12 +6,21 @@ interface Props {
   location: string
   lastUpdate: Date | null
   alertStatus: FeedStatus
+  coverageIncomplete?: boolean
   alertCount: number
   onAlertsClick?: () => void
   compact?: boolean
 }
 
-export default function WeatherHeader({ location, lastUpdate, alertCount, alertStatus, onAlertsClick, compact }: Props) {
+export default function WeatherHeader({
+  location,
+  lastUpdate,
+  alertCount,
+  alertStatus,
+  onAlertsClick,
+  compact,
+  coverageIncomplete,
+}: Props) {
   const [now, setNow] = useState(new Date())
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000)
@@ -36,18 +45,42 @@ export default function WeatherHeader({ location, lastUpdate, alertCount, alertS
         <span style={{ fontSize: compact ? 18 : 22 }}>🌩️</span>
         <div>
           {!compact && (
-            <div style={{ fontSize: 13, fontWeight: 800, letterSpacing: 2, color: 'var(--accent-cyan)', textTransform: 'uppercase' }}>
+            <div
+              style={{
+                fontSize: 13,
+                fontWeight: 800,
+                letterSpacing: 2,
+                color: 'var(--accent-cyan)',
+                textTransform: 'uppercase',
+              }}
+            >
               Weather Dashboard
             </div>
           )}
-          <div style={{ fontSize: compact ? 13 : 12, fontWeight: compact ? 700 : 400, color: compact ? 'var(--accent-cyan)' : 'var(--text-secondary)' }}>
+          <div
+            style={{
+              fontSize: compact ? 13 : 12,
+              fontWeight: compact ? 700 : 400,
+              color: compact ? 'var(--accent-cyan)' : 'var(--text-secondary)',
+            }}
+          >
             {location}
           </div>
         </div>
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: compact ? 8 : 24, fontSize: 12 }}>
-        {alertStatus !== 'success' ? <span role="status" style={{ color: 'var(--warn-yellow)' }}>{alertStatus === 'loading' ? 'Checking alerts…' : alertStatus === 'stale' ? 'Alerts stale' : 'Alerts unavailable'}</span> : alertCount > 0 ? (
+        {alertStatus !== 'success' || coverageIncomplete ? (
+          <span role="status" style={{ color: 'var(--warn-yellow)' }}>
+            {alertStatus === 'success' && coverageIncomplete
+              ? 'Alert coverage incomplete'
+              : alertStatus === 'loading'
+                ? 'Checking alerts…'
+                : alertStatus === 'stale'
+                  ? 'Alerts stale'
+                  : 'Alerts unavailable'}
+          </span>
+        ) : alertCount > 0 ? (
           <button
             onClick={onAlertsClick}
             className="animate-pulse-red"
@@ -68,28 +101,61 @@ export default function WeatherHeader({ location, lastUpdate, alertCount, alertS
             }}
             title="Click to view all active alerts"
           >
-            ⚠ {alertCount}{compact ? '' : ` ACTIVE ALERT${alertCount !== 1 ? 'S' : ''}`} ↗
+            ⚠ {alertCount}
+            {compact ? '' : ` ACTIVE ALERT${alertCount !== 1 ? 'S' : ''}`} ↗
           </button>
         ) : (
-          <div style={{ fontSize: 12, color: 'var(--warn-green)', display: 'flex', alignItems: 'center', gap: 5 }}>
+          <div
+            style={{
+              fontSize: 12,
+              color: 'var(--warn-green)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 5,
+            }}
+          >
             ✓ {compact ? 'Clear' : 'No active alerts'}
           </div>
         )}
         {!compact && (
           <>
-            <div style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+            <div
+              className="header-alert-check"
+              style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}
+            >
               {lastUpdate ? `Alerts checked ${format(lastUpdate, 'HH:mm:ss')}` : 'No successful alert update'}
             </div>
-            <div style={{ color: 'var(--accent-cyan)', fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: 14 }}>
+            <div
+              className="header-clock"
+              style={{
+                color: 'var(--accent-cyan)',
+                fontFamily: 'var(--font-mono)',
+                fontWeight: 700,
+                fontSize: 14,
+              }}
+            >
               {now.toISOString().slice(11, 19)} UTC{' '}
               <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>
-                {now.toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' })}
+                {now.toLocaleDateString('en-US', {
+                  timeZone: 'UTC',
+                  month: 'short',
+                  day: 'numeric',
+                  year: 'numeric',
+                })}
               </span>
             </div>
           </>
         )}
         {compact && (
-          <div style={{ color: 'var(--accent-cyan)', fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: 12 }}>
+          <div
+            className="header-clock"
+            style={{
+              color: 'var(--accent-cyan)',
+              fontFamily: 'var(--font-mono)',
+              fontWeight: 700,
+              fontSize: 12,
+            }}
+          >
             {now.toISOString().slice(11, 16)} UTC
           </div>
         )}

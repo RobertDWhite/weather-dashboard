@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 import httpx
 from cachetools import TTLCache
 from fastapi import APIRouter, HTTPException
@@ -162,29 +164,33 @@ async def get_forecast(lat: float = None, lon: float = None):
                     "hourly": _HOURLY_VARS,
                     "daily": _DAILY_VARS,
                     "forecast_days": 7,
+                    "timeformat": "unixtime",
                 },
             )
             r.raise_for_status()
             d = r.json()
             h = d["hourly"]
             hourly = []
-            for i in range(min(48, len(h["time"]))):
+            for i in range(len(h["time"])):
                 code = h["weather_code"][i]
                 cond, icon = WMO.get(code, ("Unknown", "❓"))
+                # The provider's sums, probabilities and gust maxima describe
+                # the preceding hour. Our rows describe the hour starting now.
+                next_i = i + 1 if i + 1 < len(h["time"]) else None
                 hourly.append(
                     {
-                        "time": h["time"][i],
+                        "time": datetime.fromtimestamp(h["time"][i], timezone.utc).isoformat(),
                         "temperature": h["temperature_2m"][i],
                         "dewPoint": h["dew_point_2m"][i],
                         "feelsLike": h["apparent_temperature"][i],
-                        "precipProbability": h["precipitation_probability"][i],
-                        "precipitation": h["precipitation"][i],
+                        "precipProbability": h["precipitation_probability"][next_i] if next_i is not None else None,
+                        "precipitation": h["precipitation"][next_i] if next_i is not None else None,
                         "weatherCode": code,
                         "condition": cond,
                         "icon": icon,
                         "windSpeed": h["wind_speed_10m"][i],
                         "windDirection": h["wind_direction_10m"][i],
-                        "windGusts": h["wind_gusts_10m"][i],
+                        "windGusts": h["wind_gusts_10m"][next_i] if next_i is not None else None,
                         "cloudCover": h["cloud_cover"][i],
                         "visibility": h["visibility"][i],
                     }
@@ -196,7 +202,9 @@ async def get_forecast(lat: float = None, lon: float = None):
                 cond, icon = WMO.get(code, ("Unknown", "❓"))
                 daily.append(
                     {
-                        "date": dy["time"][i],
+                        # Daily aggregation boundaries use the provider's fixed
+                        # request-time offset, even when hourly DST changes.
+                        "date": datetime.fromtimestamp(dy["time"][i] + d["utc_offset_seconds"], timezone.utc).date().isoformat(),
                         "tempMax": dy["temperature_2m_max"][i],
                         "tempMin": dy["temperature_2m_min"][i],
                         "feelsMax": dy["apparent_temperature_max"][i],
@@ -206,8 +214,8 @@ async def get_forecast(lat: float = None, lon: float = None):
                         "windMax": dy["wind_speed_10m_max"][i],
                         "windGusts": dy["wind_gusts_10m_max"][i],
                         "windDir": dy["wind_direction_10m_dominant"][i],
-                        "sunrise": dy["sunrise"][i],
-                        "sunset": dy["sunset"][i],
+                        "sunrise": datetime.fromtimestamp(dy["sunrise"][i], timezone.utc).isoformat(),
+                        "sunset": datetime.fromtimestamp(dy["sunset"][i], timezone.utc).isoformat(),
                         "uvIndex": dy["uv_index_max"][i],
                         "weatherCode": code,
                         "condition": cond,

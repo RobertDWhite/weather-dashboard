@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, patch
 import httpx
 
 from app.routers import briefing
+from app.routers import nws
 
 
 class BriefingTests(unittest.IsolatedAsyncioTestCase):
@@ -57,3 +58,62 @@ class BriefingTests(unittest.IsolatedAsyncioTestCase):
         ask.assert_awaited_once()
         self.assertEqual(result['text'], 'Updated forecast.')
         self.assertEqual(result['source'], 'ollama')
+
+    async def test_unavailable_alerts_never_generate_an_all_clear(self):
+        context = {'alerts': [], 'sources': {'alerts': 'unavailable', 'afd': 'available'}}
+        with patch.object(briefing, '_ask_ollama', new_callable=AsyncMock) as ask:
+            result = await briefing._generate_briefing(context, 39, -84, 'fp', 'key')
+        ask.assert_not_awaited()
+        self.assertIn('unknown', result['text'])
+        self.assertNotIn('quiet', result['text'])
+        self.assertIsNone(result['context']['alerts_count'])
+        self.assertEqual(result['sources']['alerts'], 'unavailable')
+        self.assertNotIn('key', briefing._cache)
+
+    async def test_context_uses_the_dashboard_scope_and_reports_partial_sources(self):
+        def respond(request):
+            if '/lsr.' in str(request.url):
+                return httpx.Response(200, json={'features': []})
+            return httpx.Response(503)
+        async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as client:
+            with patch.object(nws, 'get_alerts', new_callable=AsyncMock, side_effect=RuntimeError('offline')) as alerts:
+                context = await briefing._gather_context(client, 39, -84, 'nearby', 50)
+        self.assertEqual(alerts.call_args.kwargs['radius_miles'], 50)
+        self.assertEqual(alerts.call_args.kwargs['scope'], 'nearby')
+        self.assertEqual(context['sources'], {'alerts': 'unavailable', 'lsrs': 'available', 'afd': 'unavailable', 'hwo': 'unavailable'})
+        prompt = briefing._user_prompt(context)
+        self.assertIn('UNAVAILABLE source: alerts', prompt)
+        self.assertNotIn('No active NWS alerts', prompt)
+
+    def test_context_fingerprint_changes_on_revised_alert_or_recovered_source(self):
+        context = {'alerts': [{'id': 'one', 'expires': 'old'}], 'sources': {'alerts': 'available'}, 'checked_at': 1}
+        first = briefing._fingerprint(context)
+        context['checked_at'] = 2
+        self.assertEqual(first, briefing._fingerprint(context))
+        context['alerts'][0]['expires'] = 'new'
+        self.assertNotEqual(first, briefing._fingerprint(context))
+        revised = briefing._fingerprint(context)
+        context['sources']['alerts'] = 'unavailable'
+        self.assertNotEqual(revised, briefing._fingerprint(context))
+
+    async def test_home_scope_requests_the_exact_nws_point(self):
+        def respond(request):
+            self.assertEqual(request.url.params['point'], '39,-84')
+            return httpx.Response(200, json={'type': 'FeatureCollection', 'features': []})
+        nws._home_alerts_cache.clear()
+        async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as client:
+            with patch.object(nws.httpx, 'AsyncClient') as factory:
+                factory.return_value.__aenter__.return_value = client
+                result = await nws.get_alerts(dedupe=True, local=True, lat=39, lon=-84, radius_miles=75, scope='home')
+        self.assertEqual(result['scope'], 'home')
+        self.assertEqual(result['features'], [])
+        nws._home_alerts_cache.clear()
+
+    async def test_partial_zone_resolution_is_not_an_all_clear(self):
+        nws._local_alerts_cache.clear()
+        data = {'features': [{'geometry': None, 'properties': {'affectedZones': ['https://api.weather.gov/zones/forecast/OHZ001']}}]}
+        with patch.object(nws, '_fetch_zone', new_callable=AsyncMock, return_value=('forecast/OHZ001', None)):
+            result = await nws._local_alerts(data, 39, -84, 75)
+        self.assertTrue(result['incomplete'])
+        self.assertEqual(result['features'], [])
+        nws._local_alerts_cache.clear()

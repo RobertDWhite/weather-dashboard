@@ -1,111 +1,130 @@
 import type { NWSAlert } from '../types'
-import { format, parseISO } from 'date-fns'
-
+export function alertTiming(alert: NWSAlert, timezone = 'UTC') {
+  const p = alert.properties
+  const format = (value: string) =>
+    new Date(value).toLocaleString([], {
+      timeZone: timezone,
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      timeZoneName: 'short',
+    })
+  const start = p.onset || p.effective,
+    end = p.ends || p.expires
+  return [
+    start && Number.isFinite(Date.parse(start)) ? `Starts ${format(start)}` : '',
+    end && Number.isFinite(Date.parse(end)) ? `Ends ${format(end)}` : '',
+  ]
+    .filter(Boolean)
+    .join(' · ')
+}
+export function shortAlertArea(area: string) {
+  const parts = area
+    .split(';')
+    .map((s) => s.trim())
+    .filter(Boolean)
+  return parts.length > 2 ? `${parts.slice(0, 2).join('; ')} +${parts.length - 2} more areas` : area
+}
 interface Props {
   title?: string
   emptyLabel?: string
   alerts: NWSAlert[]
   onLocate: (lat: number, lon: number, zoom?: number) => void
-  onOpenDrawer: (alertId: string) => void
+  onOpenDrawer: (id: string) => void
+  compact?: boolean
+  timezone?: string
+  incomplete?: boolean
 }
-
-const SEV_CLASS: Record<string, string> = {
-  Extreme: 'sev-extreme',
-  Severe: 'sev-severe',
-  Moderate: 'sev-moderate',
-  Minor: 'sev-minor',
-}
-
-const EVENT_EMOJI: Record<string, string> = {
-  'Tornado Warning': '🌪️',
-  'Tornado Watch': '👁️',
-  'Severe Thunderstorm Warning': '⛈️',
-  'Severe Thunderstorm Watch': '⛅',
-  'Flash Flood Emergency': '🚨',
-  'Flash Flood Warning': '🌊',
-  'Flash Flood Watch': '🌧️',
-  'Flood Warning': '💧',
-  'Winter Storm Warning': '❄️',
-  'Blizzard Warning': '🌨️',
-  'High Wind Warning': '💨',
-}
-
-export default function AlertPanel({ alerts, onLocate, onOpenDrawer, title = 'Active Alerts', emptyLabel = 'No active watches or warnings' }: Props) {
-  if (!alerts.length) {
-    return (
-      <div className="card">
-        <div className="card-title">⚠ {title}</div>
-        <div style={{ color: 'var(--warn-green)', fontSize: 12, padding: '8px 0', display: 'flex', alignItems: 'center', gap: 6 }}>
-          ✓ {emptyLabel}
-        </div>
-      </div>
-    )
-  }
-
-  const sorted = [...alerts].sort((a, b) => {
-    const order = { Extreme: 0, Severe: 1, Moderate: 2, Minor: 3, Unknown: 4 }
-    return (order[a.properties.severity as keyof typeof order] ?? 4) -
-           (order[b.properties.severity as keyof typeof order] ?? 4)
-  })
-
+export default function AlertPanel({
+  alerts,
+  onLocate,
+  onOpenDrawer,
+  title = 'Active Alerts',
+  emptyLabel = 'No active watches or warnings',
+  compact = true,
+  timezone = 'UTC',
+  incomplete = false,
+}: Props) {
+  const order: Record<string, number> = { Extreme: 0, Severe: 1, Moderate: 2, Minor: 3, Unknown: 4 }
+  const sorted = [...alerts].sort(
+    (a, b) => (order[a.properties.severity] ?? 4) - (order[b.properties.severity] ?? 4),
+  )
   return (
-    <div className="card">
-      <div className="card-title">
-        <span>⚠ {title}</span>
-        <span style={{ marginLeft: 'auto', color: 'var(--warn-orange)', fontWeight: 700 }}>
-          {alerts.length}
-        </span>
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 220, overflowY: 'auto' }}>
-        {sorted.map((a) => {
-          const sev = a.properties.severity
-          const emoji = EVENT_EMOJI[a.properties.event] ?? '⚠️'
-          const endsAt = a.properties.ends || a.properties.expires
-          const endsStr = endsAt ? format(parseISO(endsAt), 'h:mm a') : ''
-
-          const locate = () => {
-            const geo = a.geometry
-            if (!geo) return
-            let coords: number[][] = []
-            if (geo.type === 'Polygon') coords = geo.coordinates[0] as number[][]
-            else if (geo.type === 'MultiPolygon') coords = (geo.coordinates as number[][][][])[0][0]
-            if (!coords.length) return
-            const lat = coords.reduce((s, c) => s + c[1], 0) / coords.length
-            const lon = coords.reduce((s, c) => s + c[0], 0) / coords.length
-            onLocate(lat, lon, 8)
-          }
-
-          return (
+    <section className={`card alert-panel ${compact ? 'compact-alerts' : ''}`} aria-label={title}>
+      <h2 className="card-title">
+        {title}
+        <span>
+          {compact && alerts.length > 1 ? (
             <button
-              type="button"
-              key={a.properties.id}
-              onClick={() => { locate(); onOpenDrawer(a.properties.id) }}
-              style={{
-                textAlign: 'left', color: 'inherit',
-                padding: '7px 9px',
-                borderRadius: 5,
-                background: 'var(--bg-base)',
-                border: '1px solid var(--border)',
-                cursor: 'pointer',
-              }}
+              className="alert-count-button"
+              onClick={() => onOpenDrawer(sorted[0].properties.id || sorted[0].id)}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
-                <span>{emoji}</span>
-                <span className={`sev-pill ${SEV_CLASS[sev] ?? 'sev-unknown'}`}>{sev}</span>
-                <span style={{ fontWeight: 700, fontSize: 12, color: 'var(--text-primary)' }}>
-                  {a.properties.event}
-                </span>
-              </div>
-              <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{a.properties.areaDesc}</div>
-              {endsStr && (
-                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
-                  Until {endsStr}
-                </div>
-              )}
+              View all {alerts.length}
             </button>
-          )
-        })}
-      </div>
-    </div>
+          ) : alerts.length > 0 ? (
+            alerts.length
+          ) : (
+            ''
+          )}
+        </span>
+      </h2>
+      {incomplete && (
+        <p className="source-warning">
+          Some alert areas could not be checked. These are verified alerts; additional nearby threats may be
+          missing.
+        </p>
+      )}
+      {!alerts.length ? (
+        incomplete ? (
+          <p className="source-warning">Alert status is incomplete. An all-clear cannot be confirmed.</p>
+        ) : (
+          <p className="empty-alerts">✓ {emptyLabel}</p>
+        )
+      ) : (
+        <div className="alert-list">
+          {sorted.map((a) => (
+            <article className="alert-summary" key={a.properties.id || a.id}>
+              <button
+                className="alert-open"
+                onClick={() => {
+                  const geo = a.geometry
+                  const ring =
+                    geo?.type === 'Polygon'
+                      ? (geo.coordinates[0] as number[][])
+                      : geo?.type === 'MultiPolygon'
+                        ? (geo.coordinates as number[][][][])[0]?.[0]
+                        : null
+                  if (ring?.length)
+                    onLocate(
+                      ring.reduce((sum, c) => sum + c[1], 0) / ring.length,
+                      ring.reduce((sum, c) => sum + c[0], 0) / ring.length,
+                      8,
+                    )
+                  onOpenDrawer(a.properties.id || a.id)
+                }}
+              >
+                <span className={`sev-pill sev-${a.properties.severity.toLowerCase()}`}>
+                  {a.properties.severity}
+                </span>{' '}
+                <strong>{a.properties.event}</strong>
+                <span className="alert-timing">{alertTiming(a, timezone)}</span>
+                <span className="alert-area-short">{shortAlertArea(a.properties.areaDesc)}</span>
+              </button>
+              {compact ? (
+                <details className="alert-areas">
+                  <summary>All affected areas</summary>
+                  <p>{a.properties.areaDesc}</p>
+                </details>
+              ) : (
+                <p className="alert-area-full">{a.properties.areaDesc}</p>
+              )}
+            </article>
+          ))}
+        </div>
+      )}
+    </section>
   )
 }

@@ -1,84 +1,119 @@
-/** AI-generated weather briefing — 2-3 sentence summary of current threats.
- * Backed by Ollama via /briefing/now. Only renders when Ollama is reachable
- * (auto-checks /briefing/status on mount). */
+import { useEffect, useRef, useState } from 'react'
 import { useFeed } from '../hooks/useFeed'
 import { FeedStatus } from './FeedPanel'
 import { fetchBriefing, fetchBriefingStatus } from '../api'
-
-export default function BriefingPanel() {
+import type { AlertScope } from '../mapWorkflows'
+export default function BriefingPanel({
+  scope = 'nearby',
+  radius = 75,
+}: {
+  scope?: AlertScope
+  radius?: number
+}) {
   const availability = useFeed('briefing-status', fetchBriefingStatus, { interval: 300_000 })
-  const feed = useFeed('briefing', fetchBriefing, { enabled: availability.data?.ok === true, interval: 600_000 })
+  const regenerate = useRef(false)
+  const feed = useFeed(
+    `briefing:${scope}:${radius}`,
+    (signal) => {
+      const refresh = regenerate.current
+      regenerate.current = false
+      return fetchBriefing(signal, { scope, radius, refresh })
+    },
+    { enabled: availability.data?.ok === true, interval: 600_000 },
+  )
+  const [elapsed, setElapsed] = useState(0)
+  useEffect(() => {
+    if (!feed.refreshing) return
+    setElapsed(0)
+    const start = Date.now()
+    const timer = setInterval(() => setElapsed(Math.floor((Date.now() - start) / 1000)), 1000)
+    return () => clearInterval(timer)
+  }, [feed.refreshing])
   const data = feed.data
-  const loading = feed.refreshing
-  const error = feed.error
-  const refresh = feed.retry
   if (!availability.data) return <FeedStatus feed={availability} name="AI briefing service" />
-  if (!availability.data.ok) return <p className="notice">AI briefing is not configured or the model service is unavailable. <button className="quiet-button" onClick={availability.retry}>Retry service</button></p>
-
+  if (!availability.data.ok)
+    return (
+      <p className="notice">
+        AI briefing service unavailable.{' '}
+        <button className="quiet-button" onClick={availability.retry}>
+          Retry service
+        </button>
+      </p>
+    )
+  const scopeLabel = scope === 'home' ? 'At home' : `Nearby · ${radius} miles`
   return (
-    <div
-      className="card"
-      style={{
-        borderTop: '2px solid #22d3ee',
-      }}
-    >
+    <section className="card ai-briefing" aria-label="AI briefing">
       <FeedStatus feed={feed} name="AI briefing" />
-      <div className="card-title" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        <span>🤖 AI Briefing</span>
-        {data && (
-          <span style={{ fontSize: 9, color: 'var(--text-muted)', fontWeight: 400 }}>
-            {data.model}
-          </span>
-        )}
+      <div className="card-title">
+        <h2>AI briefing</h2>
         <button
-          onClick={refresh}
-          disabled={loading}
-          style={{
-            marginLeft: 'auto',
-            background: 'transparent',
-            border: '1px solid var(--border)',
-            color: 'var(--text-muted)',
-            padding: '2px 8px',
-            borderRadius: 3,
-            fontSize: 10,
-            cursor: loading ? 'wait' : 'pointer',
+          className="quiet-button"
+          disabled={feed.refreshing}
+          onClick={() => {
+            regenerate.current = true
+            feed.retry()
           }}
         >
-          {loading ? '…' : '↻'}
+          Regenerate briefing
         </button>
       </div>
-      <div style={{ padding: '8px 10px' }}>
-        {error && (
-          <div style={{ fontSize: 11, color: '#fca5a5' }}>
-            Briefing unavailable
-          </div>
-        )}
-        {!error && data && (
-          <>
-            {data.source === 'fallback' && <p className="notice">AI unavailable · showing a basic weather summary. Retry to reconnect.</p>}
-            <div style={{
-              fontSize: 13,
-              lineHeight: 1.55,
-              color: 'var(--text-primary)',
-              fontWeight: 500,
-            }}>
-              {data.text || 'No briefing text returned.'}
-            </div>
-            <div style={{ fontSize: 9, color: 'var(--text-muted)', marginTop: 6, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <span>{data.context.alerts_count} alert(s)</span>
-              <span>{data.context.lsrs_count} LSR(s)</span>
-              {data.context.has_afd && <span>· AFD ✓</span>}
-              {data.context.has_hwo && <span>· HWO ✓</span>}
-              <span style={{ marginLeft: 'auto', opacity: 0.6 }}>
-                {new Date(data.generated_at * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-              </span>
-            </div>
-          </>
-        )}
-        {!error && !data && loading && (
-          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Generating briefing…</div>
-        )}
-      </div>
-    </div>
+      <p className="notice">
+        {scopeLabel} · {data?.model ?? availability.data.configured_model}
+      </p>
+      {feed.refreshing && (
+        <p role="status">
+          Collecting weather context and generating a summary… {elapsed}s. This can take up to two minutes.
+          {data ? ' The previous briefing remains below.' : ''}
+        </p>
+      )}
+      {feed.error && (
+        <p role="status" className="source-warning">
+          Could not update the briefing.{data ? ' Showing the previous generation below.' : ''}
+        </p>
+      )}
+      {data && (
+        <>
+          {data.source === 'fallback' && (
+            <p className="source-warning">Basic summary · AI or required source data unavailable.</p>
+          )}
+          {!!Object.entries(data.sources ?? {}).filter(([, status]) => status === 'unavailable').length && (
+            <p className="source-warning">
+              Unavailable sources:{' '}
+              {Object.entries(data.sources ?? {})
+                .filter(([, status]) => status === 'unavailable')
+                .map(
+                  ([name]) =>
+                    ({
+                      alerts: 'NWS alerts',
+                      lsrs: 'Local storm reports',
+                      afd: 'Forecast discussion',
+                      hwo: 'Hazardous weather outlook',
+                    })[name] ?? name,
+                )
+                .join(', ')}
+              . Missing data does not mean no threats.
+            </p>
+          )}
+          <p className="briefing-text">{data.text || 'No briefing text returned.'}</p>
+          <p className="chart-note">
+            {data.context.alerts_count === null
+              ? 'Alert count unknown'
+              : `${data.context.alerts_count} alert(s)`}{' '}
+            ·{' '}
+            {data.context.lsrs_count === null
+              ? 'Storm report count unknown'
+              : `${data.context.lsrs_count} storm report(s)`}
+          </p>
+          <p className="briefing-times">
+            Generated{' '}
+            <time dateTime={new Date(data.generated_at * 1000).toISOString()}>
+              {new Date(data.generated_at * 1000).toLocaleString()}
+            </time>
+            <br />
+            Last checked {feed.lastSuccess ? new Date(feed.lastSuccess).toLocaleString() : '—'}
+          </p>
+        </>
+      )}
+    </section>
   )
 }
