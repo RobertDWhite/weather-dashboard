@@ -17,8 +17,8 @@ data:
       openweathermap: ""
     webhooks: []
     ollama:
-      url: ""
-      model: "llama3.1:8b"
+      url: "http://ollama-5090.ai-stack.svc.cluster.local:11434"
+      model: "qwen3.8:27b"
     timemachine:
       db_path: "/data/timemachine.db"
       interval_sec: 60

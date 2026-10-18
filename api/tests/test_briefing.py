@@ -59,16 +59,17 @@ class BriefingTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result['text'], 'Updated forecast.')
         self.assertEqual(result['source'], 'ollama')
 
-    async def test_unavailable_alerts_never_generate_an_all_clear(self):
+    async def test_unavailable_alerts_are_disclosed_to_ollama(self):
         context = {'alerts': [], 'sources': {'alerts': 'unavailable', 'afd': 'available'}}
-        with patch.object(briefing, '_ask_ollama', new_callable=AsyncMock) as ask:
+        with patch.object(briefing, '_ask_ollama', new_callable=AsyncMock, return_value='NWS alert coverage is unavailable; other weather threats remain possible.') as ask:
             result = await briefing._generate_briefing(context, 39, -84, 'fp', 'key')
-        ask.assert_not_awaited()
+        ask.assert_awaited_once()
+        self.assertIn('UNAVAILABLE source: alerts', ask.await_args.args[0])
         self.assertIn('unknown', result['text'])
-        self.assertNotIn('quiet', result['text'])
+        self.assertEqual(result['source'], 'ollama')
         self.assertIsNone(result['context']['alerts_count'])
         self.assertEqual(result['sources']['alerts'], 'unavailable')
-        self.assertNotIn('key', briefing._cache)
+        self.assertIn('key', briefing._cache)
 
     async def test_context_uses_the_dashboard_scope_and_reports_partial_sources(self):
         def respond(request):

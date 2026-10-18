@@ -269,11 +269,10 @@ async def _generate_briefing(ctx: dict, lat: float, lon: float, fp: str, cache_k
     prompt = _user_prompt(ctx)
     source = "ollama"
     try:
-        if ctx.get("sources", {}).get("alerts") == "unavailable":
-            text = _fallback_summary(ctx)
-            source = "fallback"
-        else:
-            text = await _ask_ollama(prompt)
+        # Partial alert coverage is included explicitly in the prompt. Keep
+        # the model useful with the remaining observations, while the prompt
+        # forbids it from presenting an all-clear or inventing missing alerts.
+        text = await _ask_ollama(prompt)
     except Exception as e:
         # Graceful fallback: deterministic summary built from the context alone
         text = _fallback_summary(ctx) + f"  (AI offline: {str(e)[:80]})"
