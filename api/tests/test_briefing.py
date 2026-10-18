@@ -65,7 +65,7 @@ class BriefingTests(unittest.IsolatedAsyncioTestCase):
             result = await briefing._generate_briefing(context, 39, -84, 'fp', 'key')
         ask.assert_awaited_once()
         self.assertIn('UNAVAILABLE source: alerts', ask.await_args.args[0])
-        self.assertIn('unknown', result['text'])
+        self.assertIn('unknown', ask.await_args.args[0])
         self.assertEqual(result['source'], 'ollama')
         self.assertIsNone(result['context']['alerts_count'])
         self.assertEqual(result['sources']['alerts'], 'unavailable')
